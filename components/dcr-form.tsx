@@ -1,7 +1,7 @@
 "use client";
 
 import type { Doctor, DoctorExceptionReason, Product, VisitSummaryRow } from "@zivira/types";
-import { AlertTriangle, Plus, Send, X } from "lucide-react";
+
 import { useEffect, useMemo, useState } from "react";
 import { apiClient, type FieldManager } from "@/lib/api-client";
 

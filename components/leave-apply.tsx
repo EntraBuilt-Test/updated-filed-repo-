@@ -23,6 +23,7 @@ export function LeaveApply() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -41,15 +42,16 @@ export function LeaveApply() {
 
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDayIncrement = () => {
-    let val = parseFloat(days) || 1;
+    const val = parseFloat(days) || 1;
     if (val < 30) setDays(String(val + (duration === 'full' ? 1 : 0.5)));
   };
 
   const handleDayDecrement = () => {
-    let val = parseFloat(days) || 1;
+    const val = parseFloat(days) || 1;
     const step = duration === 'full' ? 1 : 0.5;
     if (val > step) setDays(String(val - step));
   };
