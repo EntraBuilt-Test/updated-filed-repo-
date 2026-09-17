@@ -7,6 +7,14 @@ import { DoctorDcrReport } from "@/components/doctor-dcr-report";
 
 export default function DoctorsPage() {
   const [tab, setTab] = useState<"list" | "dcr-report">("list");
+  const [reloadSignal, setReloadSignal] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+
+  function handleSync() {
+    setSyncing(true);
+    setReloadSignal((n) => n + 1);
+    setTimeout(() => setSyncing(false), 600);
+  }
 
   return (
     <div className="flex-1 px-4 pt-4 pb-24 space-y-4">
@@ -18,8 +26,11 @@ export default function DoctorsPage() {
           <p className="text-xs text-slate-500 font-normal">Mapped to your employee code for monthly call compliance.</p>
         </div>
         {/* Refresh Button */}
-        <button className="flex items-center space-x-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 shadow-sm active:scale-95 transition-all">
-          <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button
+          className="flex items-center space-x-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 shadow-sm active:scale-95 transition-all"
+          onClick={handleSync}
+        >
+          <svg className={`w-3.5 h-3.5 text-slate-600 ${syncing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
           </svg>
           <span>Sync</span>
@@ -48,7 +59,7 @@ export default function DoctorsPage() {
         </button>
       </div>
 
-      {tab === "list" ? <DoctorList /> : <DoctorDcrReport />}
+      {tab === "list" ? <DoctorList reloadSignal={reloadSignal} /> : <DoctorDcrReport />}
     </div>
   );
 }

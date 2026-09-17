@@ -1,12 +1,20 @@
 "use client";
 
-import type { Attendance, FieldDashboard } from "@zivira/types";
+import type { Attendance, Dcr, FieldDashboard } from "@zivira/types";
 import { RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import { fetchCurrentLocation, readSavedLocation, type FieldLocation } from "@/lib/location";
 
+const CATEGORY_PRIORITY: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
+
+function dcrDoctorId(dcr: Dcr): string | undefined {
+  return typeof dcr.doctorId === "string" ? dcr.doctorId : dcr.doctorId?.id;
+}
+
 export function TodayPanel() {
+  const router = useRouter();
   const [dashboard, setDashboard] = useState<FieldDashboard | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -15,6 +23,10 @@ export function TodayPanel() {
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const [search, setSearch] = useState("");
+  const [highPriorityOnly, setHighPriorityOnly] = useState(false);
+  const [visitTab, setVisitTab] = useState<"all" | "pending" | "completed">("all");
+  const [routeOptimized, setRouteOptimized] = useState(false);
 
   async function loadDashboard() {
     setLoading(true);
@@ -61,6 +73,19 @@ export function TodayPanel() {
     }
   }
 
+  async function enableGps() {
+    setError("");
+    setLocating(true);
+    try {
+      const currentLocation = await fetchCurrentLocation();
+      setLocation(currentLocation);
+    } catch (gpsError) {
+      setError(gpsError instanceof Error ? gpsError.message : "Unable to fetch GPS location");
+    } finally {
+      setLocating(false);
+    }
+  }
+
   useEffect(() => {
     setLocation(readSavedLocation());
     void loadDashboard();
@@ -73,6 +98,43 @@ export function TodayPanel() {
   const toggleCardExpand = (id: string) => {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
+
+  const today = new Date().toDateString();
+  const visitedTodayIds = new Set(
+    (dashboard?.recentDcrs ?? [])
+      .filter((dcr) => new Date(dcr.visitDate).toDateString() === today)
+      .map((dcr) => dcrDoctorId(dcr))
+      .filter((id): id is string => Boolean(id))
+  );
+
+  const searchFilteredDoctors = (dashboard?.doctors ?? []).filter((doctor) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      doctor.name.toLowerCase().includes(query) ||
+      doctor.specialty.toLowerCase().includes(query) ||
+      doctor.city.toLowerCase().includes(query);
+    const matchesPriority = !highPriorityOnly || doctor.category === "A" || doctor.category === "B";
+    return matchesSearch && matchesPriority;
+  });
+
+  const allCount = searchFilteredDoctors.length;
+  const pendingCount = searchFilteredDoctors.filter((doctor) => !visitedTodayIds.has(doctor.id)).length;
+  const completedCount = searchFilteredDoctors.filter((doctor) => visitedTodayIds.has(doctor.id)).length;
+
+  let visibleDoctors = searchFilteredDoctors.filter((doctor) => {
+    if (visitTab === "pending") return !visitedTodayIds.has(doctor.id);
+    if (visitTab === "completed") return visitedTodayIds.has(doctor.id);
+    return true;
+  });
+
+  if (routeOptimized) {
+    visibleDoctors = [...visibleDoctors].sort((a, b) => {
+      const priorityDiff = (CATEGORY_PRIORITY[a.category] ?? 4) - (CATEGORY_PRIORITY[b.category] ?? 4);
+      if (priorityDiff !== 0) return priorityDiff;
+      return a.name.localeCompare(b.name);
+    });
+  }
 
   return (
     <>
@@ -174,8 +236,12 @@ export function TodayPanel() {
               </p>
             </div>
           </div>
-          <button className="shrink-0 px-3 py-2 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300/80 rounded-xl active:scale-95 transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer">
-            <span>Enable GPS</span>
+          <button
+            className="shrink-0 px-3 py-2 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300/80 rounded-xl active:scale-95 transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-70"
+            onClick={enableGps}
+            disabled={locating}
+          >
+            <span>{locating ? "Locating…" : "Enable GPS"}</span>
           </button>
         </div>
       </section>
@@ -266,11 +332,15 @@ export function TodayPanel() {
           <div className="relative flex items-center justify-between">
             <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-1.5 bg-slate-100 rounded-full z-0"></div>
             <div className="absolute left-2 top-1/2 -translate-y-1/2 h-1.5 bg-emerald-600 rounded-full transition-all duration-500 ease-out z-0" style={{width: `${dashboard?.today.plannedVisits ? ((dashboard?.today.completedDcrs ?? 0) / dashboard.today.plannedVisits) * 100 : 0}%`}}></div>
-            <button className="relative z-10 w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center ring-2 ring-white shadow-xs hover:scale-110 transition cursor-pointer">1</button>
-            <button className="relative z-10 w-6 h-6 rounded-full bg-white text-slate-600 font-bold text-[10px] flex items-center justify-center border border-slate-300 ring-2 ring-white shadow-xs hover:scale-110 transition cursor-pointer">2</button>
-            <button className="relative z-10 w-6 h-6 rounded-full bg-white text-slate-600 font-bold text-[10px] flex items-center justify-center border border-slate-300 ring-2 ring-white shadow-xs hover:scale-110 transition cursor-pointer">3</button>
-            <button className="relative z-10 w-6 h-6 rounded-full bg-white text-slate-600 font-bold text-[10px] flex items-center justify-center border border-slate-300 ring-2 ring-white shadow-xs hover:scale-110 transition cursor-pointer">4</button>
-            <button className="relative z-10 w-6 h-6 rounded-full bg-white text-slate-600 font-bold text-[10px] flex items-center justify-center border border-slate-300 ring-2 ring-white shadow-xs hover:scale-110 transition cursor-pointer">5</button>
+            {Array.from({ length: Math.min(visibleDoctors.length, 5) }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                className={`relative z-10 w-6 h-6 rounded-full font-bold text-[10px] flex items-center justify-center ring-2 ring-white shadow-xs hover:scale-110 transition cursor-pointer ${n === 1 ? "bg-emerald-600 text-white" : "bg-white text-slate-600 border border-slate-300"}`}
+                onClick={() => document.getElementById(`doctor-card-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              >
+                {n}
+              </button>
+            ))}
           </div>
           <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-0.5 pt-1.5">
             <span>Start: Lilavati</span>
@@ -299,12 +369,22 @@ export function TodayPanel() {
       {/* Search & Route Quick Controls */}
       <div className="space-y-2">
         <div className="relative flex items-center">
-          <input className="w-full text-xs pl-8 pr-9 py-2 bg-white border border-slate-200/90 rounded-xl shadow-xs placeholder:text-slate-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition" placeholder="Search doctor, clinic, or specialty..." type="text" />
+          <input
+            className="w-full text-xs pl-8 pr-9 py-2 bg-white border border-slate-200/90 rounded-xl shadow-xs placeholder:text-slate-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition"
+            placeholder="Search doctor, clinic, or specialty..."
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <svg className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8" strokeWidth="2"></circle>
             <line strokeWidth="2" x1="21" x2="16.65" y1="21" y2="16.65"></line>
           </svg>
-          <button className="absolute right-2 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition cursor-pointer" title="Filter list">
+          <button
+            className={`absolute right-2 p-1 rounded-md transition cursor-pointer ${highPriorityOnly ? "text-emerald-700 bg-emerald-50" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"}`}
+            title="Filter list"
+            onClick={() => setHighPriorityOnly((v) => !v)}
+          >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" strokeWidth="1.8" strokeLinejoin="round"></polygon>
             </svg>
@@ -315,8 +395,11 @@ export function TodayPanel() {
             <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
             Tap card for visual aid &amp; samples
           </span>
-          <button className="text-emerald-800 font-bold hover:underline inline-flex items-center gap-1 active:scale-95 transition bg-emerald-50/80 px-2 py-0.5 rounded-md border border-emerald-200/60 shadow-xs">
-            <svg className="w-3.5 h-3.5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button
+            className={`font-bold hover:underline inline-flex items-center gap-1 active:scale-95 transition px-2 py-0.5 rounded-md border shadow-xs ${routeOptimized ? "text-white bg-emerald-700 border-emerald-700" : "text-emerald-800 bg-emerald-50/80 border-emerald-200/60"}`}
+            onClick={() => setRouteOptimized((v) => !v)}
+          >
+            <svg className={`w-3.5 h-3.5 ${routeOptimized ? "text-white" : "text-emerald-700"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
             </svg>
             <span>Optimize Route</span>
@@ -330,20 +413,35 @@ export function TodayPanel() {
           <div className="flex items-center space-x-2">
             <h3 className="text-base font-bold text-slate-900">Scheduled Visits</h3>
             <span className="bg-emerald-100 text-emerald-800 font-bold text-[11px] px-2 py-0.5 rounded-full transition-transform">
-              {dashboard?.doctors?.length ?? 0}
+              {visibleDoctors.length}
             </span>
           </div>
           <div className="flex items-center p-0.5 bg-slate-200/80 rounded-lg text-xs">
-            <button className="px-2.5 py-1 rounded-md font-semibold text-emerald-800 bg-white shadow-xs transition-all duration-150 active:scale-95">All ({dashboard?.doctors?.length ?? 0})</button>
-            <button className="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900 transition-all duration-150 active:scale-95">Pending ({dashboard?.doctors?.length ?? 0})</button>
-            <button className="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900 transition-all duration-150 active:scale-95">Completed (0)</button>
+            <button
+              className={`px-2.5 py-1 rounded-md transition-all duration-150 active:scale-95 ${visitTab === "all" ? "font-semibold text-emerald-800 bg-white shadow-xs" : "font-medium text-slate-600 hover:text-slate-900"}`}
+              onClick={() => setVisitTab("all")}
+            >
+              All ({allCount})
+            </button>
+            <button
+              className={`px-2.5 py-1 rounded-md transition-all duration-150 active:scale-95 ${visitTab === "pending" ? "font-semibold text-emerald-800 bg-white shadow-xs" : "font-medium text-slate-600 hover:text-slate-900"}`}
+              onClick={() => setVisitTab("pending")}
+            >
+              Pending ({pendingCount})
+            </button>
+            <button
+              className={`px-2.5 py-1 rounded-md transition-all duration-150 active:scale-95 ${visitTab === "completed" ? "font-semibold text-emerald-800 bg-white shadow-xs" : "font-medium text-slate-600 hover:text-slate-900"}`}
+              onClick={() => setVisitTab("completed")}
+            >
+              Completed ({completedCount})
+            </button>
           </div>
         </div>
         <div className="space-y-2.5">
-          {(dashboard?.doctors ?? []).map((doctor) => {
+          {visibleDoctors.map((doctor, index) => {
             const isExpanded = !!expandedCards[doctor.id];
             return (
-              <div key={doctor.id} className="visit-card bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs hover:border-emerald-300 transition-all duration-200">
+              <div id={`doctor-card-${index + 1}`} key={doctor.id} className="visit-card bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs hover:border-emerald-300 transition-all duration-200">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 cursor-pointer select-none" onClick={() => toggleCardExpand(doctor.id)}>
                     <div className="flex items-center gap-2">
@@ -356,19 +454,31 @@ export function TodayPanel() {
                         A
                       </span>
                       <span className="text-[11px] text-slate-500 font-medium">Slot: 10:30 AM</span>
-                      <button className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 active:scale-90 transition cursor-pointer" title="Tap to advance status">
+                      <button
+                        className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 active:scale-90 transition cursor-pointer"
+                        title="Tap to advance status"
+                        onClick={() => router.push(`/field/dcr?doctorId=${doctor.id}`)}
+                      >
                         <span>Pending</span>
                         <span className="ml-1 text-[9px] opacity-75">↻</span>
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center space-x-1.5 shrink-0 pt-0.5">
-                    <button className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200 active:scale-90 transition shadow-xs cursor-pointer" title="Call Doctor / Assistant">
+                    <button
+                      className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200 active:scale-90 transition shadow-xs cursor-pointer"
+                      title="Call Doctor / Assistant"
+                      onClick={() => setError("No phone number on file for this doctor")}
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"></path>
                       </svg>
                     </button>
-                    <button className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200 active:scale-90 transition shadow-xs cursor-pointer" title="Get GPS Directions">
+                    <button
+                      className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200 active:scale-90 transition shadow-xs cursor-pointer"
+                      title="Get GPS Directions"
+                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(doctor.name + " " + doctor.city)}`, "_blank", "noopener,noreferrer")}
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"></path>
                         <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"></path>
@@ -402,7 +512,12 @@ export function TodayPanel() {
                     </div>
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-[11px] text-slate-500">Rx Focus: Insulin Sensitizer trial data</span>
-                      <button className="px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-50 rounded border border-emerald-300 active:scale-95 transition">Mark as Visited</button>
+                      <button
+                        className="px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-50 rounded border border-emerald-300 active:scale-95 transition"
+                        onClick={() => router.push(`/field/dcr?doctorId=${doctor.id}`)}
+                      >
+                        Mark as Visited
+                      </button>
                     </div>
                   </div>
                 )}

@@ -3,6 +3,7 @@
 import type { Doctor, DoctorExceptionReason, Product, VisitSummaryRow } from "@zivira/types";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiClient, type FieldManager } from "@/lib/api-client";
 
 type Sample = { productName: string; productCode: string; qty: number; batchNumber: string; priority: "" | "HIGH" | "MEDIUM" | "LOW" };
@@ -30,6 +31,7 @@ const PROMO_MATERIAL_OPTIONS = ["Visual Aid", "Brochure", "Product Sample Card",
 // }
 
 export function DcrForm() {
+  const searchParams = useSearchParams();
   const [doctors, setDoctors]               = useState<Doctor[]>([]);
   const [visitSummary, setVisitSummary]     = useState<VisitSummaryRow[]>([]);
   const [unvisited, setUnvisited]           = useState<Doctor[]>([]);
@@ -89,6 +91,13 @@ export function DcrForm() {
     apiClient.exceptionReasons().then(r => setExceptionReasons(r.data)).catch(() => {});
     apiClient.managers().then(r => setManagers(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const preselect = searchParams.get("doctorId");
+    if (preselect && doctors.some(d => d.id === preselect)) {
+      setDoctorId(preselect);
+    }
+  }, [doctors, searchParams]);
 
   // Zivira_Project_Basic.docx Topic 8 — Doctor Exception Management
   async function submitException(doctorId: string) {

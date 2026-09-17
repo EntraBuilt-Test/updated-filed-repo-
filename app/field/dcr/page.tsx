@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { DcrForm } from "@/components/dcr-form";
 
 export default function DcrPage() {
@@ -20,7 +21,9 @@ export default function DcrPage() {
         </div>
       </section>
 
-      <DcrForm />
+      <Suspense fallback={null}>
+        <DcrForm />
+      </Suspense>
     </main>
   );
 }
