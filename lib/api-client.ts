@@ -24,7 +24,7 @@ export type FieldManager = {
   designation?: string | null;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://zivira-labs-backend-1.onrender.com/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://zivira-backend-swagger-ui.onrender.com/api";
 const TOKEN_KEY = "zivira.field.token";
 
 export function getToken()  { if (typeof window === "undefined") return null; return window.localStorage.getItem(TOKEN_KEY); }
