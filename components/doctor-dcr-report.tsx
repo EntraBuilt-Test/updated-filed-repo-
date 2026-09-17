@@ -102,11 +102,11 @@ export function DoctorDcrReport() {
           return (
             <article className="card" key={doctor.id}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                <p style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, margin: 0 }}>
-                  <Stethoscope size={16} /> {doctor.name}
+                <p style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, margin: 0, minWidth: 0, flex: "1 1 auto", flexWrap: "wrap", wordBreak: "break-word" }}>
+                  <Stethoscope size={16} style={{ flexShrink: 0 }} /> {doctor.name}
                   <span className="muted" style={{ fontWeight: 400 }}>· {doctor.specialty}</span>
                 </p>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
                   <span className="badge">
                     {visits.length} visit{visits.length === 1 ? "" : "s"} total
                   </span>
@@ -152,10 +152,10 @@ export function DoctorDcrReport() {
                           <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>
                             <StatusBadge status={visit.status} />
                           </td>
-                          <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>
+                          <td style={{ padding: "8px", borderBottom: "1px solid var(--line)", wordBreak: "break-word" }}>
                             {visit.productsDetailed?.length ? visit.productsDetailed.join(", ") : <span className="muted">—</span>}
                           </td>
-                          <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>
+                          <td style={{ padding: "8px", borderBottom: "1px solid var(--line)", wordBreak: "break-word" }}>
                             {visit.notes ? visit.notes : <span className="muted">—</span>}
                           </td>
                         </tr>

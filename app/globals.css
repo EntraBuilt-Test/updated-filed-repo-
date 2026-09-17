@@ -167,6 +167,7 @@ textarea {
   border-radius: var(--radius);
   background: var(--panel);
   padding: 14px;
+  overflow: hidden;
 }
 
 .location-card {
