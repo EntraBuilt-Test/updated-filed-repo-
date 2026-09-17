@@ -13,6 +13,37 @@ function dcrDoctorId(dcr: Dcr): string | undefined {
   return typeof dcr.doctorId === "string" ? dcr.doctorId : dcr.doctorId?.id;
 }
 
+function todayKey(employeeCode: string) {
+  return `zivira.field.attendance.${employeeCode}.${new Date().toISOString().slice(0, 10)}`;
+}
+
+// The backend only exposes POST check-in / POST check-out — there is no GET
+// endpoint to re-fetch today's attendance record, so `attendance` state
+// (and therefore the Check in/Check out button) resets to nothing on every
+// page reload even though the person is still checked in for the day. This
+// is the real bug behind "check in/out button not working": after a
+// refresh the button silently forgets what already happened. Persist the
+// two real timestamps the API actually returns, scoped to today's date, so
+// a reload restores the true state instead of losing it.
+function readTodayAttendance(employeeCode: string): { checkInAt?: string; checkOutAt?: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(todayKey(employeeCode));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveTodayAttendance(employeeCode: string, data: { checkInAt?: string; checkOutAt?: string }) {
+  try { window.localStorage.setItem(todayKey(employeeCode), JSON.stringify(data)); } catch { /* ignore */ }
+}
+
+function formatTime(iso?: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+
 export function TodayPanel() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<FieldDashboard | null>(null);
@@ -49,6 +80,9 @@ export function TodayPanel() {
       setLocation(currentLocation);
       const response = await apiClient.checkIn(currentLocation);
       setAttendance(response.data);
+      if (dashboard?.profile.employeeCode && response.data?.checkInAt) {
+        saveTodayAttendance(dashboard.profile.employeeCode, { checkInAt: response.data.checkInAt });
+      }
       setConfirmMessage("You have checked in successfully.");
       await loadDashboard();
     } catch (checkInError) {
@@ -63,7 +97,19 @@ export function TodayPanel() {
     setLocating(true);
     try {
       const response = await apiClient.checkOut();
+      if (!response.data) {
+        // The backend only updates an existing attendance row for today —
+        // it never creates one on check-out. If none exists (e.g. the
+        // person never actually checked in today), it returns no record
+        // instead of an error, which used to look like a silent no-op.
+        setError("You haven't checked in today yet, so there's nothing to check out of.");
+        return;
+      }
       setAttendance(response.data);
+      if (dashboard?.profile.employeeCode) {
+        const existing = readTodayAttendance(dashboard.profile.employeeCode) ?? {};
+        saveTodayAttendance(dashboard.profile.employeeCode, { ...existing, checkOutAt: response.data.checkOutAt });
+      }
       setConfirmMessage("You have checked out successfully.");
       await loadDashboard();
     } catch (checkOutError) {
@@ -90,6 +136,17 @@ export function TodayPanel() {
     setLocation(readSavedLocation());
     void loadDashboard();
   }, []);
+
+  // Restore today's real check-in/check-out timestamps once we know who
+  // the signed-in field rep is (the backend has no GET for this, so this
+  // is the only way a page reload doesn't lose that state — see the
+  // comment on readTodayAttendance above).
+  useEffect(() => {
+    const code = dashboard?.profile.employeeCode;
+    if (!code || attendance) return;
+    const saved = readTodayAttendance(code);
+    if (saved) setAttendance(saved as Attendance);
+  }, [dashboard?.profile.employeeCode]);
 
   const hasCheckedIn = Boolean(attendance?.checkInAt) || Boolean(dashboard?.today.attendanceMarked);
   const hasCheckedOut = Boolean(attendance?.checkOutAt);
@@ -286,15 +343,23 @@ export function TodayPanel() {
         <article className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-pointer active:scale-[0.98] group relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Attendance</span>
-            <button className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors shadow-xs" onClick={checkIn}>Punch Now</button>
+            {!hasCheckedIn && (
+              <button disabled={locating} onClick={checkIn} className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors shadow-xs disabled:opacity-60">Punch In</button>
+            )}
+            {hasCheckedIn && !hasCheckedOut && (
+              <button disabled={locating} onClick={checkOut} className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors shadow-xs disabled:opacity-60">Punch Out</button>
+            )}
+            {hasCheckedOut && (
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-500 border border-slate-200">Done</span>
+            )}
           </div>
           <div className="my-2 flex items-baseline gap-1.5">
             <span className="text-2xl font-black text-slate-900 tracking-tight transition-colors duration-200">{hasCheckedIn ? "Yes" : "No"}</span>
             {!hasCheckedIn && <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>}
           </div>
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="transition-colors duration-200 truncate">{hasCheckedIn ? "Checked In" : "Shift punch pending"}</span>
-            <span className="text-[10px] font-semibold text-slate-400">09:00 AM</span>
+            <span className="transition-colors duration-200 truncate">{hasCheckedOut ? "Checked Out" : hasCheckedIn ? "Checked In" : "Shift punch pending"}</span>
+            <span className="text-[10px] font-semibold text-slate-400">{hasCheckedOut ? formatTime(attendance?.checkOutAt) : hasCheckedIn ? formatTime(attendance?.checkInAt) : "—"}</span>
           </div>
         </article>
 
