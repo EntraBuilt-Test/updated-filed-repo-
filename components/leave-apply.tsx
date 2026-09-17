@@ -2,7 +2,7 @@
 "use client";
 
 import type { LeaveApplication, LeaveReason } from "@zivira/types";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiClient, ApiError } from "@/lib/api-client";
 
 function formatDate(iso: string) {
@@ -25,6 +25,16 @@ export function LeaveApply() {
   const [submitting, setSubmitting] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(true);
+  const [leaveTab, setLeaveTab] = useState<"all" | "approved">("all");
+  // No backend upload endpoint exists yet for medical proof / prescription
+  // attachments (see lib/api-client.ts) — this is a local, form-only
+  // attachment until one is added.
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // No backend withdraw/cancel endpoint exists for leave applications yet —
+  // this tracks which pending request is showing the honest "not supported"
+  // message, keyed by application id.
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -55,6 +65,50 @@ export function LeaveApply() {
     const step = duration === 'full' ? 1 : 0.5;
     if (val > step) setDays(String(val - step));
   };
+
+  const visibleApplications = leaveTab === "all" ? applications : applications.filter(a => a.status === "APPROVED");
+
+  function handleWithdrawClick(id: string) {
+    setWithdrawing(id);
+    setTimeout(() => setWithdrawing(current => (current === id ? null : current)), 4000);
+  }
+
+  // No backend leave-slip/PDF endpoint exists — build a real, printable
+  // summary client-side from this application's own actual fields.
+  function viewSlip(app: LeaveApplication) {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>Leave Slip - ${app.leaveType}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 32px; color: #1e293b; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  p.sub { color: #64748b; font-size: 12px; margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  td { padding: 8px 4px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+  td.label { color: #64748b; font-weight: bold; width: 40%; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: bold; font-size: 11px; background: #d1fae5; color: #065f46; }
+</style>
+</head>
+<body>
+  <h1>Leave Application Summary</h1>
+  <p class="sub">Generated locally on ${new Date().toLocaleDateString("en-IN")}</p>
+  <table>
+    <tr><td class="label">Leave Type</td><td>${app.leaveType}</td></tr>
+    <tr><td class="label">From</td><td>${formatDate(app.fromDate)}</td></tr>
+    <tr><td class="label">To</td><td>${formatDate(app.toDate)}</td></tr>
+    <tr><td class="label">Days</td><td>${app.days}</td></tr>
+    <tr><td class="label">Status</td><td><span class="status">${app.status}</span></td></tr>
+    <tr><td class="label">Approved By</td><td>${app.approvedByName || "Manager"}</td></tr>
+  </table>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -191,17 +245,42 @@ export function LeaveApply() {
             ></textarea>
           </div>
 
-          <div className="p-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 hover:bg-slate-50 transition-colors flex items-center justify-between cursor-pointer">
-            <div className="flex items-center gap-2">
+          <div className="p-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 hover:bg-slate-50 transition-colors flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-2xs">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-700 leading-none">Medical Proof / Prescription</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">PDF or JPG up to 5MB</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 truncate">{attachedFile ? attachedFile.name : "PDF or JPG up to 5MB"}</p>
               </div>
             </div>
-            <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-1 rounded-md border border-brand-200/60">Upload</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={e => setAttachedFile(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-1 rounded-md border border-brand-200/60 hover:bg-brand-100"
+              >
+                {attachedFile ? attachedFile.name : "Upload"}
+              </button>
+              {attachedFile && (
+                <button
+                  type="button"
+                  onClick={() => { setAttachedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-700 rounded-md"
+                  aria-label="Remove attached file"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
 
           {error && <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{error}</p>}
@@ -223,12 +302,24 @@ export function LeaveApply() {
             <p className="text-[11px] text-slate-500 font-normal">Past applications & real-time workflow status</p>
           </div>
           <div className="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-lg text-[11px] font-bold">
-            <button className="px-2 py-0.5 rounded-md bg-white text-slate-900 shadow-2xs">All ({applications.length})</button>
-            <button className="px-2 py-0.5 rounded-md text-slate-600 hover:text-slate-900">Approved</button>
+            <button
+              type="button"
+              onClick={() => setLeaveTab("all")}
+              className={`px-2 py-0.5 rounded-md ${leaveTab === "all" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900"}`}
+            >
+              All ({visibleApplications.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeaveTab("approved")}
+              className={`px-2 py-0.5 rounded-md ${leaveTab === "approved" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900"}`}
+            >
+              Approved
+            </button>
           </div>
         </div>
 
-        {applications.map((app) => {
+        {visibleApplications.map((app) => {
           const isApproved = app.status === 'APPROVED';
           const isPending = app.status === 'PENDING';
           const isRejected = app.status === 'REJECTED';
@@ -275,13 +366,19 @@ export function LeaveApply() {
                       <svg className="w-3.5 h-3.5 text-brand-700" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
                       Approved by <strong className="text-slate-700 font-semibold">{app.approvedByName || 'Manager'}</strong>
                     </span>
-                    <button className="text-brand-700 font-bold hover:underline">View Slip</button>
+                    <button type="button" onClick={() => viewSlip(app)} className="text-brand-700 font-bold hover:underline">View Slip</button>
                   </>
                 )}
                 {isPending && (
                   <>
                     <span className="text-slate-500 font-medium">Routed to Regional Office Review</span>
-                    <button className="text-red-600 font-bold hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md border border-red-200/60">Withdraw</button>
+                    <button
+                      type="button"
+                      onClick={() => handleWithdrawClick(app.id)}
+                      className="text-red-600 font-bold hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md border border-red-200/60"
+                    >
+                      Withdraw
+                    </button>
                   </>
                 )}
                 {isRejected && (
@@ -290,6 +387,12 @@ export function LeaveApply() {
                   </>
                 )}
               </div>
+
+              {withdrawing === app.id && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+                  Withdraw requests aren&apos;t supported by the backend yet — please ask your manager to reject it instead.
+                </p>
+              )}
             </article>
           );
         })}

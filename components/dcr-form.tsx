@@ -23,6 +23,12 @@ const PRESCRIPTION_INTEREST_OPTIONS = [
 ] as const;
 const PROMO_MATERIAL_OPTIONS = ["Visual Aid", "Brochure", "Product Sample Card", "Clinical Study", "Leave-behind Literature"];
 
+// The backend's POST /field/dcrs endpoint always creates the record as
+// SUBMITTED — there is no draft status it supports (see submitDcr in
+// lib/api-client.ts). "Save as Draft" is therefore a real, local-only save
+// of the in-progress form to this device, restored next time the form opens.
+const DRAFT_KEY = "zivira.field.dcrDraft";
+
 // function badgeClass(badge: "GREEN" | "YELLOW" | "RED" | undefined) {
 //   if (badge === "RED") return "badge badge-danger";
 //   if (badge === "YELLOW") return "badge badge-warning";
@@ -98,6 +104,66 @@ export function DcrForm() {
       setDoctorId(preselect);
     }
   }, [doctors, searchParams]);
+
+  // Restore a locally-saved draft (see DRAFT_KEY above) once doctors have
+  // loaded, so we can validate the saved doctorId is still real. Runs after
+  // — and yields to — the URL `?doctorId=` preselect above: a link that
+  // explicitly asks for a doctor wins over a stale draft.
+  useEffect(() => {
+    if (doctors.length === 0) return;
+    if (searchParams.get("doctorId")) return;
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Record<string, unknown>;
+      let restoredAnything = false;
+
+      if (typeof draft.doctorId === "string" && draft.doctorId && doctors.some(d => d.id === draft.doctorId)) {
+        setDoctorId(draft.doctorId);
+        restoredAnything = true;
+      }
+      if (typeof draft.productsDetailed === "string") { setProductsDetailed(draft.productsDetailed); restoredAnything = true; }
+      if (typeof draft.notes === "string") { setNotes(draft.notes); restoredAnything = true; }
+      if (draft.callSession === "MORNING" || draft.callSession === "AFTERNOON" || draft.callSession === "EVENING") {
+        setCallSession(draft.callSession); restoredAnything = true;
+      }
+      if (typeof draft.callTime === "string") { setCallTime(draft.callTime); restoredAnything = true; }
+      if (Array.isArray(draft.samplesGiven)) { setSamplesGiven(draft.samplesGiven as Sample[]); restoredAnything = true; }
+      if (Array.isArray(draft.inputsGiven)) { setInputsGiven(draft.inputsGiven as Input[]); restoredAnything = true; }
+      if (typeof draft.hospitalClinic === "string") { setHospitalClinic(draft.hospitalClinic); restoredAnything = true; }
+      if (typeof draft.checkInTime === "string") { setCheckInTime(draft.checkInTime); restoredAnything = true; }
+      if (typeof draft.checkOutTime === "string") { setCheckOutTime(draft.checkOutTime); restoredAnything = true; }
+      if (typeof draft.productFeedback === "string") { setProductFeedback(draft.productFeedback); restoredAnything = true; }
+      if (typeof draft.competitorMentioned === "string") { setCompetitorMentioned(draft.competitorMentioned); restoredAnything = true; }
+
+      if (restoredAnything) setMessage("Restored your saved draft.");
+    } catch {
+      // Corrupted or inaccessible localStorage — safe to ignore, form just starts blank.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doctors, searchParams]);
+
+  function saveDraft() {
+    try {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        doctorId,
+        productsDetailed,
+        notes,
+        callSession,
+        callTime,
+        samplesGiven,
+        inputsGiven,
+        hospitalClinic,
+        checkInTime,
+        checkOutTime,
+        productFeedback,
+        competitorMentioned
+      }));
+      setMessage("Draft saved on this device.");
+    } catch {
+      setError("Unable to save draft on this device.");
+    }
+  }
 
   // Zivira_Project_Basic.docx Topic 8 — Doctor Exception Management
   async function submitException(doctorId: string) {
@@ -231,6 +297,7 @@ export function DcrForm() {
       setFollowUpRequired(false); setFollowUpDate("");
       apiClient.visitSummary().then(r => setVisitSummary(r.data)).catch(() => {});
       apiClient.unvisitedDoctors().then(r => setUnvisited(r.data)).catch(() => {});
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* non-critical */ }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to submit DCR");
     } finally {
@@ -841,8 +908,9 @@ export function DcrForm() {
             )}
           </button>
           
-          <button 
-            type="button" 
+          <button
+            type="button"
+            onClick={saveDraft}
             className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-center space-x-1.5 transition text-xs active:bg-slate-100"
           >
             <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" strokeLinecap="round" strokeLinejoin="round"></path></svg>

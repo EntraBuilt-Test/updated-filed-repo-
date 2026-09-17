@@ -48,6 +48,50 @@ export function PayrollStatusCard() {
     load();
   };
 
+  // No payslip/PDF-generation backend endpoint exists for payroll (see
+  // lib/api-client.ts — only payrollStatus/submitPayrollExplanation) — build
+  // a real, printable summary client-side from the loaded record's actual
+  // fields. The amount figures shown elsewhere on this card are still
+  // hardcoded placeholders (PayrollStatusRecord carries no amount fields),
+  // so the summary calls that out explicitly instead of implying they're real.
+  function downloadPayslip() {
+    if (!record) return;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>Payroll Status - ${record.month}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 32px; color: #1e293b; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  p.sub { color: #64748b; font-size: 12px; margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  td { padding: 8px 4px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+  td.label { color: #64748b; font-weight: bold; width: 40%; }
+  .disclaimer { margin-top: 24px; font-size: 11px; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+  <h1>Payroll Status Summary</h1>
+  <p class="sub">Not an official payslip — generated locally on ${new Date().toLocaleDateString("en-IN")}</p>
+  <table>
+    <tr><td class="label">Employee</td><td>${record.employeeName || record.employeeCode}</td></tr>
+    <tr><td class="label">Month</td><td>${record.month}</td></tr>
+    <tr><td class="label">Status</td><td>${record.status}</td></tr>
+    <tr><td class="label">Missed Days (Snapshot)</td><td>${record.missedDaysSnapshot}</td></tr>
+    ${record.holdReason ? `<tr><td class="label">Hold Reason</td><td>${record.holdReason}</td></tr>` : ""}
+    ${record.employeeExplanation ? `<tr><td class="label">Your Explanation</td><td>${record.employeeExplanation}</td></tr>` : ""}
+    ${record.managerApprovedByName ? `<tr><td class="label">Approved By</td><td>${record.managerApprovedByName}</td></tr>` : ""}
+  </table>
+  <div class="disclaimer">Not an official payslip — this app does not yet have a payslip-generation backend, and the amount figures shown in the app are placeholders, not real disbursed values.</div>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+
   const statusMap = {
     RELEASED: { label: "Released", color: "bg-emerald-600 text-white" },
     HOLD: { label: "On Hold", color: "bg-red-600 text-white" },
@@ -176,7 +220,7 @@ export function PayrollStatusCard() {
       </div>
 
       <div className="flex items-center gap-2 pt-1">
-        <button className="flex-1 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+        <button onClick={downloadPayslip} disabled={!record} className="flex-1 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 text-emerald-800 border border-emerald-300/80 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
           <svg className="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           <span>Download Payslip</span>
         </button>
