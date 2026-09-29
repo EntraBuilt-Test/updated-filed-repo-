@@ -24,6 +24,66 @@ export type FieldManager = {
   designation?: string | null;
 };
 
+// Round 18 — Field Rep Reports hub. These mirror the shape of
+// serializeDocument()/plain generic-master rows returned by the new
+// GET /field/slides, /field/manuals, /field/leave-entitlement,
+// /field/activity-status, /field/tasks routes (src/routes/field.routes.ts).
+// Not (yet) part of @zivira/types, same precedent as FieldNotice/FieldManager
+// above — declared locally here.
+export type FieldSlide = {
+  id: string;
+  division?: string | null;
+  subDivision?: string | null;
+  brand?: string | null;
+  fileName?: string | null;
+  uploadedOn?: string | null;
+  mimeType?: string | null;
+  status?: string;
+};
+
+export type FieldManual = {
+  id: string;
+  subject?: string | null;
+  fileName?: string | null;
+  uploadedOn?: string | null;
+  mimeType?: string | null;
+  status?: string;
+};
+
+// Leave Entitlement - Entry generic-master row, matched to this employee by
+// name server-side (see field.routes.ts's nameMatchesEmployee) — it has no
+// employeeCode stored on the row itself.
+export type FieldLeaveEntitlement = {
+  id: string;
+  fieldForceName?: string;
+  year?: string;
+  balanceCl?: number; balancePl?: number; balanceSl?: number; balanceLop?: number;
+  cl?: number; pl?: number; sl?: number; lop?: number;
+};
+
+// Activity - Status generic-master row, same name-matched pattern.
+export type FieldActivityStatus = {
+  id: string;
+  fieldForceName?: string;
+  mode?: string;
+  month?: string;
+  year?: string;
+  activityName?: string;
+  status?: "Completed" | "Pending" | string;
+};
+
+export type FieldTask = {
+  id: string;
+  modeOfTask: string;
+  priority: "High" | "Medium" | "Low";
+  assignedByName?: string | null;
+  deadlineFrom?: string | null;
+  deadlineTo?: string | null;
+  description?: string;
+  status: "New" | "Pending" | "Completed" | "Closed" | "ReOpen" | "Hold" | "Cancel";
+  createdAt?: string;
+};
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://zivira-backend-swagger-ui.onrender.com/api";
 const TOKEN_KEY = "zivira.field.token";
 
@@ -51,6 +111,40 @@ async function request<T>(path: string, init: RequestInit = {}) {
   const payload = await response.json();
   if (!response.ok) throw new ApiError(payload?.error?.message ?? "API request failed", payload?.error?.details);
   return payload as ApiEnvelope<T>;
+}
+
+// Shared by downloadSlide/downloadManual below — same authed-blob pattern
+// the Admin portal's apiClient.downloadMasterFile already uses, since these
+// field-scoped download routes require the same Bearer token as every
+// other /field/* call (a plain <a href> can't carry it).
+async function downloadFile(path: string, fileName: string) {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+  });
+  if (!response.ok) throw new Error("Download failed");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName || "download";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Inline viewing (e.g. a PDF slide opened in a new tab) instead of forcing
+// a download — returns an object URL the caller is responsible for
+// revoking once done with it.
+async function fetchBlobUrl(path: string) {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+  });
+  if (!response.ok) throw new Error("Could not load file");
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }
 
 export const apiClient = {
@@ -163,5 +257,25 @@ export const apiClient = {
   },
   managerVisitCoverage(month?: string) {
     return request<{ month: string; mrs: { employeeCode: string; name: string }[]; rows: { doctorId: string; doctorName: string; mappedEmployeeCode?: string; cells: { employeeCode: string; visitCount: number }[] }[] }>(`/manager/visit-coverage${month ? `?month=${month}` : ""}`);
+  },
+
+  // Round 18 — Field Rep Reports hub
+  slides(filters?: { division?: string; subDivision?: string; brand?: string }) {
+    const qs = filters ? Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join("&") : "";
+    return request<FieldSlide[]>(`/field/slides${qs ? `?${qs}` : ""}`);
+  },
+  downloadSlide(id: string, fileName: string) { return downloadFile(`/field/slides/${id}/download`, fileName); },
+  viewSlideBlobUrl(id: string) { return fetchBlobUrl(`/field/slides/${id}/download`); },
+
+  manuals() { return request<FieldManual[]>("/field/manuals"); },
+  downloadManual(id: string, fileName: string) { return downloadFile(`/field/manuals/${id}/download`, fileName); },
+
+  leaveEntitlement() { return request<FieldLeaveEntitlement[]>("/field/leave-entitlement"); },
+
+  activityStatus() { return request<FieldActivityStatus[]>("/field/activity-status"); },
+
+  tasks() { return request<FieldTask[]>("/field/tasks"); },
+  updateTaskStatus(id: string, status: "Pending" | "Completed") {
+    return request<FieldTask>(`/field/tasks/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
   }
 };

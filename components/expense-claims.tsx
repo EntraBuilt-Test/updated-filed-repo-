@@ -2,7 +2,7 @@
 
 import type { ExpenseClaim, ExpenseClaimCategory, TourPlan } from "@zivira/types";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 
 const CATEGORIES: ExpenseClaimCategory[] = ["Travel", "Lodging", "Food", "Local Conveyance", "Other"];
@@ -24,6 +24,11 @@ export function ExpenseClaims() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Round 18 — scroll down to the real claims summary below (this already
+  // IS "My Expenses" — a full submission + history view) right after a
+  // successful submit, instead of leaving the rep stranded on the
+  // now-cleared form.
+  const summaryRef = useRef<HTMLDivElement | null>(null);
 
   function refresh() {
     apiClient.expenseClaims().then((r) => setClaims(r.data)).catch(() => {});
@@ -50,6 +55,7 @@ export function ExpenseClaims() {
       setMessage(`Claim ${created.data.claimId} submitted for approval.`);
       setExpenseDate(""); setAmountRs(""); setDescription("");
       refresh();
+      setTimeout(() => summaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to submit expense claim");
     } finally {
@@ -178,7 +184,7 @@ export function ExpenseClaims() {
       </form>
 
       {/* FEED: CLAIMS SUBMITTED */}
-      <div className="space-y-3 pt-3">
+      <div ref={summaryRef} className="space-y-3 pt-3">
         <div className="flex items-end justify-between px-1">
           <div>
             <h3 className="text-xs font-black text-slate-700 uppercase tracking-wide">Claims Submitted</h3>

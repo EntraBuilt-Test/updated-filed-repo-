@@ -91,7 +91,7 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 px-4 pt-4 pb-6 space-y-4">{children}</main>
       
       {navOpen && (
-        <nav className="fixed bottom-0 w-full max-w-md mx-auto grid grid-cols-7 border-t border-slate-200 bg-white/95 backdrop-blur-md z-40 pb-safe" aria-label="Field navigation">
+        <nav className="fixed bottom-0 w-full max-w-md mx-auto grid grid-cols-8 border-t border-slate-200 bg-white/95 backdrop-blur-md z-40 pb-safe" aria-label="Field navigation">
           {fieldNav.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

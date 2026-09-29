@@ -2,7 +2,7 @@
 
 import type { CompanyBranch, TourPlan, TourPlanLocation } from "@zivira/types";
 import { Plus, Send, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiClient, ApiError } from "@/lib/api-client";
 
 function currentMonth() {
@@ -32,6 +32,11 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
   const [submitting, setSubmitting] = useState(false);
   const [conflictTpId, setConflictTpId] = useState<string | null>(null);
   const [addingToExisting, setAddingToExisting] = useState(false);
+  // Round 18 — after a successful submit, scroll down to the real "Cycle
+  // History & Approvals" list below (this already IS this MR's own Tour
+  // Plan status/summary view — extending it beat building a duplicate
+  // screen) instead of leaving them stranded on the now-cleared form.
+  const historyRef = useRef<HTMLDivElement | null>(null);
 
   function refresh() {
     apiClient.tourPlans().then((r) => setTourPlans(r.data)).catch(() => {});
@@ -65,6 +70,7 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
       setMessage(`Tour Plan ${created.data.tpId} submitted for approval.`);
       setLocations([{ date: "", area: "", town: "", purpose: "Regular Coverage" }]);
       refresh();
+      setTimeout(() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to submit Tour Plan");
       if (e instanceof ApiError && typeof e.details?.existingTpId === "string") {
@@ -317,7 +323,7 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
       )}
 
       {/* History */}
-      <div className="space-y-2.5 pt-4">
+      <div ref={historyRef} className="space-y-2.5 pt-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
             <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

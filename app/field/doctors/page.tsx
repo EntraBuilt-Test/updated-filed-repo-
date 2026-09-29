@@ -1,12 +1,20 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { DoctorList } from "@/components/doctor-list";
 import { DoctorDcrReport } from "@/components/doctor-dcr-report";
 
-export default function DoctorsPage() {
-  const [tab, setTab] = useState<"list" | "dcr-report">("list");
+// Round 18 — the DCR submit form now redirects here with ?tab=dcr-report
+// so a field rep lands on their real DCR Coverage history right after
+// submitting, instead of staying on the (now-empty) form or going back to
+// Today. useSearchParams() requires a <Suspense> boundary in the App
+// Router, hence the wrapper default export below.
+function DoctorsPageInner() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "dcr-report" ? "dcr-report" : "list";
+  const [tab, setTab] = useState<"list" | "dcr-report">(initialTab);
   const [reloadSignal, setReloadSignal] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
@@ -61,5 +69,13 @@ export default function DoctorsPage() {
 
       {tab === "list" ? <DoctorList reloadSignal={reloadSignal} /> : <DoctorDcrReport />}
     </div>
+  );
+}
+
+export default function DoctorsPage() {
+  return (
+    <Suspense fallback={null}>
+      <DoctorsPageInner />
+    </Suspense>
   );
 }

@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { TourPlanForm } from "@/components/tour-plan-form";
 import { ExpenseClaims } from "@/components/expense-claims";
 
-export default function TourPlanPage() {
-  const [activeTab, setActiveTab] = useState<"tour-plan" | "expense-claims">("tour-plan");
+// Round 18 — the Reports hub's "My Expenses" link and the Expense Claim
+// success toast both land here with ?tab=expense-claims, so a field rep
+// coming from either place sees the claims summary (this IS "My Expenses"
+// — see expense-claims.tsx, already a full submission + history view) tab
+// pre-selected instead of the Tour Plan form. useSearchParams() requires a
+// <Suspense> boundary, hence the wrapper default export below.
+function TourPlanPageInner() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "expense-claims" ? "expense-claims" : "tour-plan";
+  const [activeTab, setActiveTab] = useState<"tour-plan" | "expense-claims">(initialTab);
 
   return (
     <div className="space-y-4">
@@ -47,5 +56,13 @@ export default function TourPlanPage() {
         {activeTab === "tour-plan" ? <TourPlanForm switchToExpenses={() => setActiveTab("expense-claims")} /> : <ExpenseClaims />}
       </div>
     </div>
+  );
+}
+
+export default function TourPlanPage() {
+  return (
+    <Suspense fallback={null}>
+      <TourPlanPageInner />
+    </Suspense>
   );
 }

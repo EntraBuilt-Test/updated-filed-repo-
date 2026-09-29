@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarOff, ClipboardPlus, MapPinned, Stethoscope, UserCheck, UserCircle } from "lucide-react";
+import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, MapPinned, Stethoscope, UserCheck, UserCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type FieldNavItem = {
@@ -18,5 +18,13 @@ export const fieldNav: FieldNavItem[] = [
   // approval (see /field/leave-applications + the Manager portal's new
   // Leave Requests page).
   { title: "Leave", href: "/field/leave", icon: CalendarOff },
+  // Round 18 — new top-level "Reports" destination: a hub of read-only
+  // "my own data" views over admin-managed Activities/Options screens
+  // (Slides, Leave Entitlement, Activity Status, Tasks, Expenses, Manuals),
+  // modeled on sanpharma's own Activity Reports / MIS Reports nav pattern.
+  // An 8th bottom tab rather than folding it into Profile, since the
+  // coordinator asked for a real top-level destination and the existing
+  // bar (7 items) still fits one more icon+label at this width.
+  { title: "Reports", href: "/field/reports", icon: FileBarChart },
   { title: "Profile", href: "/field/profile", icon: UserCircle }
 ];

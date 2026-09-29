@@ -3,7 +3,7 @@
 import type { Doctor, DoctorExceptionReason, Product, VisitSummaryRow } from "@zivira/types";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient, type FieldManager } from "@/lib/api-client";
 
 type Sample = { productName: string; productCode: string; qty: number; batchNumber: string; priority: "" | "HIGH" | "MEDIUM" | "LOW" };
@@ -76,6 +76,7 @@ export function DcrForm() {
   const [followUpDate, setFollowUpDate]     = useState("");
 
   const [message, setMessage]               = useState("");
+  const router = useRouter();
   const [error, setError]                   = useState("");
   const [submitting, setSubmitting]         = useState(false);
   const [showOverVisitModal, setShowOverVisitModal] = useState(false);
@@ -286,6 +287,12 @@ export function DcrForm() {
         followUpDate: followUpRequired && followUpDate ? followUpDate : undefined
       });
       setMessage(result.overVisitFlag ? "DCR submitted — override logged for your manager to review." : "DCR submitted successfully.");
+      // Round 18 — land on the real "My DCR" history (Doctors tab's DCR
+      // Coverage report, grouped by doctor with every visit ever logged)
+      // instead of staying on this now-cleared form or falling back to
+      // Today. Short delay so the success toast above is actually seen
+      // before the page navigates away.
+      setTimeout(() => router.push("/field/doctors?tab=dcr-report"), 1200);
       setNotes("");
       setSamplesGiven([{ productName: "", productCode: "", qty: 1, batchNumber: "", priority: "" }]);
       setInputsGiven([{ inputName: "", itemType: "", qty: 1, valueRs: "" }]);
