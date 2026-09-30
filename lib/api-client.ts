@@ -304,6 +304,16 @@ export const apiClient = {
     return request<Attendance>("/field/attendance/check-in", { method: "POST", body: JSON.stringify({ location }) });
   },
   checkOut()  { return request<Attendance>("/field/attendance/check-out", { method: "POST" }); },
+  // Phase 2 — "day still open from before" check, called on app load.
+  checkoutStatus() {
+    return request<{
+      blocked: boolean;
+      openDate?: string;
+      checkInAt?: string;
+      outstandingCount?: number;
+      outstandingVisits?: { id: string; doctorName?: string }[];
+    }>("/field/checkout-status");
+  },
 
   // PRD 12.2 — MR-to-Doctor Visit Tracking
   visitSummary(month?: string)      { return request<VisitSummaryRow[]>(`/field/visit-summary${month ? `?month=${month}` : ""}`); },
@@ -443,5 +453,11 @@ export const apiClient = {
   },
   planCampaignVisit(input: { campaignId: string; doctorId: string; visitDate: string; notes?: string }) {
     return request<FieldCampaignVisit>("/field/campaign-visits", { method: "POST", body: JSON.stringify(input) });
+  },
+  // Phase 2 — resolve a stranded planned campaign visit (Completed/Cancelled)
+  // directly from the Checkout Required screen, when a DCR can't be logged
+  // for it any more (DCR always logs "today").
+  resolveCampaignVisit(id: string, input: { status: "Completed" | "Cancelled"; notes?: string }) {
+    return request<FieldCampaignVisit>(`/field/campaign-visits/${id}/resolve`, { method: "POST", body: JSON.stringify(input) });
   }
 };

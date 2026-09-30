@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { fieldNav } from "@/lib/nav";
 import { apiClient, clearToken } from "@/lib/api-client";
 import { fetchCurrentLocation, readSavedLocation, type FieldLocation } from "@/lib/location";
+import { CheckoutGuard } from "@/components/checkout-guard";
 
 // Round 19 item 3 — bell + unread badge, polled the same way the
 // notifications page itself polls (20s), so the header always reflects
@@ -117,7 +118,7 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       
-      <main className="flex-1 px-4 pt-4 pb-6 space-y-4">{children}</main>
+      <main className="flex-1 px-4 pt-4 pb-6 space-y-4"><CheckoutGuard>{children}</CheckoutGuard></main>
       
       {navOpen && (
         <nav className="fixed bottom-0 w-full max-w-md mx-auto grid grid-cols-9 border-t border-slate-200 bg-white/95 backdrop-blur-md z-40 pb-safe" aria-label="Field navigation">
