@@ -138,6 +138,18 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
                 )}
                 href={item.href}
                 key={item.href}
+                // Item 4 (perf audit) — this bar now has 12 tabs, all
+                // present in the DOM at once (just horizontally scrolled,
+                // not virtualized). Next.js's default Link prefetch fires a
+                // background RSC+JS chunk fetch for every link once it's in
+                // the viewport, so with prefetch left on this was quietly
+                // firing up to 12 background route fetches on every single
+                // page load, most of which the rep will never visit in that
+                // session — real, verifiable extra network load on what's
+                // likely a mobile connection. Off here; the active tab's
+                // own page load is unaffected (this only stops speculative
+                // prefetching of the OTHER 11 tabs).
+                prefetch={false}
               >
                 <Icon size={19} />
                 <span>{item.title}</span>

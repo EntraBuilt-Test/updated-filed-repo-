@@ -25,6 +25,16 @@ import { apiClient, type FieldCampaignVisit } from "@/lib/api-client";
 // visitType/type param for this (see api-client.ts), so this file just
 // threads entityType through and reads chemistId/chemistName instead of
 // doctorId/doctorName when entityType === "chemist".
+//
+// Post-launch fix — the user asked for Today's Campaign to show BOTH
+// doctor and chemist planned visits together instead of needing a
+// separate "Chemist" nav tab. entityType now also accepts "all": the
+// planned-visits list is unfiltered (each row reads its own visitType to
+// decide doctorId/doctorName vs chemistId/chemistName and to link into
+// the right screen), while off-plan deviation browsing — which genuinely
+// needs one concrete type per request to the backend — requires the
+// caller to pick Doctor or Chemist first (the Plan toggle is disabled in
+// "all" mode; see CampaignPage's browseType state).
 function statusBadgeClasses(status: FieldCampaignVisit["status"]) {
   switch (status) {
     case "Completed": return "bg-emerald-50 text-emerald-800 border-emerald-300";
@@ -39,8 +49,18 @@ const DEVIATION_TYPE_FALLBACK = ["Plan Change", "New Doctor", "Coverage Gap", "E
 
 type BrowseEntity = { id: string; name: string; specialty?: string | null; city?: string | null };
 
-export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doctor" | "chemist" }) {
+export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doctor" | "chemist" | "all" }) {
+  const isAll = entityType === "all";
+  // Only meaningful when entityType is a concrete type (deviation browsing
+  // is disabled in "all" mode below, so isChemist is never read for that
+  // path while isAll is true).
   const isChemist = entityType === "chemist";
+  // Deviation browsing always needs one concrete backend type — the UI
+  // never actually calls into it while isAll is true (the Plan toggle is
+  // hidden and effectivePlanMode is forced true), but this keeps every
+  // deviation-related apiClient call correctly typed as "doctor" | "chemist"
+  // without an unsafe cast.
+  const concreteEntityType: "doctor" | "chemist" = isChemist ? "chemist" : "doctor";
   const [visits, setVisits] = useState<FieldCampaignVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -79,8 +99,8 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
   // "doctor", so an absent visitType is treated as "doctor" here rather
   // than silently disappearing from the doctor screen.
   const filteredVisits = useMemo(
-    () => visits.filter((v) => (v.visitType ?? "doctor") === entityType),
-    [visits, entityType]
+    () => (isAll ? visits : visits.filter((v) => (v.visitType ?? "doctor") === entityType)),
+    [visits, entityType, isAll]
   );
 
   useEffect(() => {
@@ -93,7 +113,7 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
   }, []);
 
   function loadTerritories(q: string) {
-    apiClient.deviationTerritories(q.trim() || undefined, entityType)
+    apiClient.deviationTerritories(q.trim() || undefined, concreteEntityType)
       .then((r) => setTerritories(r.data))
       .catch(() => setTerritories([]));
   }
@@ -107,7 +127,7 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
     setDevEntities([]);
     setDevError("");
     setDevLoading(true);
-    apiClient.deviationDoctors(t, entityType)
+    apiClient.deviationDoctors(t, concreteEntityType)
       .then((r) => setDevEntities(r.data.map((d) => ({
         id: d.id,
         name: "name" in d ? d.name : d.dealerName,
@@ -137,7 +157,7 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
     setDevError("");
     try {
       await apiClient.requestDeviationVisit({
-        visitType: entityType,
+        visitType: concreteEntityType,
         ...(isChemist ? { chemistId: remarksEntity.id } : { doctorId: remarksEntity.id }),
         deviationType,
         remarks: remarks.trim()
@@ -154,6 +174,10 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
   }
 
   const label = isChemist ? "chemist" : "doctor";
+  // In "all" mode, deviation browsing (which needs one concrete backend
+  // type per request) is unavailable — the Plan toggle is hidden and
+  // planMode is always true.
+  const effectivePlanMode = isAll ? true : planMode;
 
   return (
     <section className="space-y-3">
@@ -161,20 +185,28 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
         <div>
           <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5"><Target size={15} className="text-emerald-700" /> Today&apos;s Campaign</h2>
           <p className="text-[11px] text-slate-500">
-            {planMode ? `${isChemist ? "Chemists" : "Doctors"} planned for today across all your active campaigns.` : "Browsing off-plan — pick a territory to find a " + label + "."}
+            {isAll
+              ? "Doctors & chemists planned for today across all your active campaigns."
+              : effectivePlanMode
+                ? `${isChemist ? "Chemists" : "Doctors"} planned for today across all your active campaigns.`
+                : "Browsing off-plan — pick a territory to find a " + label + "."}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setPlanMode((v) => !v)}
-            className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${planMode ? "bg-emerald-600" : "bg-slate-300"}`}
-            title="Plan"
-          >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${planMode ? "translate-x-6" : ""}`} />
-          </button>
-          <span className="text-[10px] font-bold text-slate-500 uppercase">Plan</span>
-          {planMode && (
+          {!isAll && (
+            <>
+              <button
+                type="button"
+                onClick={() => setPlanMode((v) => !v)}
+                className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${planMode ? "bg-emerald-600" : "bg-slate-300"}`}
+                title="Plan"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${planMode ? "translate-x-6" : ""}`} />
+              </button>
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Plan</span>
+            </>
+          )}
+          {effectivePlanMode && (
             <button type="button" onClick={load} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 shrink-0">
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             </button>
@@ -182,17 +214,22 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
         </div>
       </div>
 
-      {planMode ? (
+      {effectivePlanMode ? (
         <>
           {error && <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
           {!loading && filteredVisits.length === 0 && !error && (
-            <p className="text-sm text-slate-500 italic px-1">Nothing planned for today — add {label}s under Campaign Planning, or turn Plan off to find one off-plan.</p>
+            <p className="text-sm text-slate-500 italic px-1">
+              {isAll
+                ? "Nothing planned for today — add doctors or chemists under Campaign Planning."
+                : `Nothing planned for today — add ${label}s under Campaign Planning, or turn Plan off to find one off-plan.`}
+            </p>
           )}
 
           <div className="space-y-2.5">
             {filteredVisits.map((v) => {
-              const targetId = isChemist ? v.chemistId : v.doctorId;
-              const targetName = isChemist ? v.chemistName : v.doctorName;
+              const rowIsChemist = (v.visitType ?? "doctor") === "chemist";
+              const targetId = rowIsChemist ? v.chemistId : v.doctorId;
+              const targetName = rowIsChemist ? v.chemistName : v.doctorName;
               return (
                 <div key={v.id} className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-card space-y-2">
                   <div className="flex items-start justify-between gap-2">
@@ -211,10 +248,10 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
                   </div>
                   {v.status === "Planned" && targetId && (
                     <Link
-                      href={isChemist ? `/field/chemist-call?chemistId=${encodeURIComponent(targetId)}` : `/field/dcr?doctorId=${encodeURIComponent(targetId)}`}
+                      href={rowIsChemist ? `/field/chemist-call?chemistId=${encodeURIComponent(targetId)}` : `/field/dcr?doctorId=${encodeURIComponent(targetId)}`}
                       className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200"
                     >
-                      <ClipboardPlus size={13} /> {isChemist ? "Open Chemist Call" : "Log DCR for this visit"}
+                      <ClipboardPlus size={13} /> {rowIsChemist ? "Open Chemist Call" : "Log DCR for this visit"}
                     </Link>
                   )}
                   {v.status === "Pending Approval" && (

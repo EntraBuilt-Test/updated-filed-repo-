@@ -68,7 +68,11 @@ export function DoctorList({ reloadSignal }: { reloadSignal?: number } = {}) {
           <button onClick={() => setToast("")} className="ml-auto text-slate-400 hover:text-white">✕</button>
         </div>
       )}
-      {/* Search & Scan Bar */}
+      {/* Search Bar — the Voice Search and Filter Modal Trigger buttons that
+          used to sit here were removed (item 3 button audit): neither had
+          a real handler (no speech API, no filter modal existed anywhere
+          behind either one), and the Quick Filter Pills row right below
+          already provides real, working category filtering. */}
       <div className="relative flex items-center space-x-2">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -79,22 +83,11 @@ export function DoctorList({ reloadSignal }: { reloadSignal?: number } = {}) {
           <input
             type="search"
             placeholder="Search doctor, hospital, specialty..."
-            className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 shadow-sm font-normal"
+            className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 shadow-sm font-normal"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button aria-label="Voice Search" className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-            </svg>
-          </button>
         </div>
-        {/* Filter Modal Trigger */}
-        <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 active:bg-slate-100 shadow-sm flex items-center justify-center shrink-0">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-          </svg>
-        </button>
       </div>
 
       {/* Quick Filter Pills */}
@@ -149,12 +142,11 @@ export function DoctorList({ reloadSignal }: { reloadSignal?: number } = {}) {
         </button>
       </div>
 
-      {/* Territory Action Tools */}
+      {/* Territory Action Tools — the "+ Request New Doctor" button that
+          used to sit here was removed (item 3 button audit): no backend
+          request workflow exists for it anywhere in this codebase. */}
       <div className="flex items-center justify-between pt-1">
         <span className="text-xs font-bold text-slate-700">Showing {visibleDoctors.length} Assigned Doctors</span>
-        <button className="text-xs font-semibold text-brand-700 flex items-center space-x-1 hover:underline">
-          <span>+ Request New Doctor</span>
-        </button>
       </div>
 
       {error && <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded">{error}</p>}
