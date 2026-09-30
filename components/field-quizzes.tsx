@@ -43,8 +43,23 @@ export function FieldQuizzes() {
     setQuizError("");
     setResult(null);
     setAnswers({});
+    // Round 20 follow-up — this exact bug (a literal "undefined" quiz id
+    // reaching the backend) has now shown up twice on different quizzes,
+    // so this guards the very first step of the chain: never even attempt
+    // to open a quiz whose id is missing from the list response, and never
+    // trust a detail response that comes back without one either. Both
+    // cases now fail loudly and visibly here instead of silently letting
+    // an id-less quiz become "active" and only breaking later at submit.
+    if (!id) {
+      setError("This quiz is missing its reference id — please refresh and try again.");
+      return;
+    }
     try {
       const res = await apiClient.quiz(id);
+      if (!res.data?.id) {
+        setError("The server didn't return a valid quiz reference — please refresh and try again.");
+        return;
+      }
       setActiveQuiz(res.data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to load quiz");
@@ -60,6 +75,14 @@ export function FieldQuizzes() {
 
   async function submitQuiz() {
     if (!activeQuiz) return;
+    // Defense in depth alongside the openQuiz guard above — if activeQuiz
+    // somehow ended up without a real id, fail with a clear, actionable
+    // message instead of posting the literal string "undefined" to the
+    // backend (the exact bug this round re-investigated).
+    if (!activeQuiz.id) {
+      setQuizError("This quiz didn't load its reference id correctly — please close it and reopen it from the list.");
+      return;
+    }
     const answered = Object.keys(answers).length;
     if (answered < activeQuiz.questions.length) {
       setQuizError(`Please answer all ${activeQuiz.questions.length} question(s) before submitting.`);
