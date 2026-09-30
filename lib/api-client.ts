@@ -56,6 +56,39 @@ export type FieldSlideDownload = {
   downloadedAt?: string | null;
 };
 
+// Item 2 of a post-launch fix round — field-rep Inventory (receiving
+// Sample/Input dispatches). Real data source: the admin's Sample/Input
+// Despatch Upload screens now actually populate DispatchModel (they used
+// to be log-only), so this is real dispatch data, not a mock.
+export type FieldDispatch = {
+  id: string;
+  type: "INPUT" | "SAMPLE";
+  dispatchDate: string;
+  month: string;
+  year: string;
+  itemCount: number;
+  receivedDate?: string | null;
+  status: "Pending" | "Received";
+};
+
+export type FieldDispatchItem = {
+  code: string;
+  name: string;
+  dispatchQty: number;
+  receivedQty: number | null;
+  remarks: string | null;
+  availableInventory: number;
+};
+
+export type FieldDispatchDetail = {
+  id: string;
+  type: "INPUT" | "SAMPLE";
+  dispatchDate: string;
+  receivedDate?: string | null;
+  status: "Pending" | "Received";
+  items: FieldDispatchItem[];
+};
+
 export type FieldManual = {
   id: string;
   subject?: string | null;
@@ -489,6 +522,22 @@ export const apiClient = {
     return request<FieldSlideDownload>(`/field/slides/${id}/mark-downloaded`, { method: "POST" });
   },
   slideDownloads() { return request<FieldSlideDownload[]>("/field/slide-downloads"); },
+
+  // Item 2 — field-rep Inventory (receiving Sample/Input dispatches).
+  dispatches(type?: "INPUT" | "SAMPLE") {
+    return request<FieldDispatch[]>(`/field/dispatches${type ? `?type=${type}` : ""}`);
+  },
+  dispatch(id: string) { return request<FieldDispatchDetail>(`/field/dispatches/${id}`); },
+  setDispatchReceivedDate(id: string, receivedDate: string) {
+    return request<{ id: string; receivedDate: string }>(`/field/dispatches/${id}/received-date`, {
+      method: "POST", body: JSON.stringify({ receivedDate })
+    });
+  },
+  receiveDispatch(id: string, items: { code: string; receivedQty: number; remarks?: string | null }[]) {
+    return request<FieldDispatchDetail>(`/field/dispatches/${id}/receive`, {
+      method: "POST", body: JSON.stringify({ items })
+    });
+  },
 
   manuals() { return request<FieldManual[]>("/field/manuals"); },
   downloadManual(id: string, fileName: string) { return downloadFile(`/field/manuals/${id}/download`, fileName); },

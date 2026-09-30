@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText, PackageCheck } from "lucide-react";
 import { PageHeader } from "@/components/page-components";
 
 // Phase 4 — new "Master" top-level nav destination, mirroring the
@@ -10,7 +10,11 @@ import { PageHeader } from "@/components/page-components";
 // round; the hub pattern (same as /field/reports) leaves room for the
 // others without a nav restructure later.
 const MASTER_LINKS = [
-  { title: "E-Detailing Download", href: "/field/master/e-detailing", icon: FileText, description: "Browse slide materials uploaded by Admin by brand, and download for offline practice." }
+  { title: "E-Detailing Download", href: "/field/master/e-detailing", icon: FileText, description: "Browse slide materials uploaded by Admin by brand, and download for offline practice." },
+  // Item 2 of a post-launch fix round — receiving Sample/Input dispatches,
+  // reading the real DispatchModel batches the admin's own Despatch
+  // Upload screens now populate.
+  { title: "Inventory", href: "/field/master/inventory", icon: PackageCheck, description: "Receive Sample/Input dispatches and track your available stock." }
 ];
 
 export default function MasterHubPage() {
@@ -19,7 +23,7 @@ export default function MasterHubPage() {
       <PageHeader
         eyebrow="Master"
         title="Master"
-        description="Reference content Admin manages centrally."
+        description="Reference content and dispatches Admin manages centrally."
       />
       <div className="space-y-2.5">
         {MASTER_LINKS.map((item) => {
