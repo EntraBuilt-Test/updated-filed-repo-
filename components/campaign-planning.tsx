@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarPlus, Megaphone, Stethoscope } from "lucide-react";
-import { apiClient, type FieldCampaign, type FieldCampaignVisit } from "@/lib/api-client";
+import { apiClient, type FieldCampaign, type FieldCampaignVisit, type FieldChemist } from "@/lib/api-client";
 import type { Doctor } from "@zivira/types";
 
 function formatDate(iso?: string | null) {
@@ -20,9 +20,16 @@ function formatDate(iso?: string | null) {
 // other field screen already scopes by) + a date, and submits it as a
 // real plan row (POST /field/campaign-visits). The submitted row is what
 // Campaign Execution's "Today's Campaign" reads back for today's date.
-export function CampaignPlanning() {
+//
+// Phase 5 — the `entityType` prop drives the same component for chemists:
+// the picker reads GET /field/chemists (the real Chemist Master) instead
+// of GET /field/doctors, and submits with visitType/chemistId instead of
+// doctorId, through the exact same POST /field/campaign-visits route.
+export function CampaignPlanning({ entityType = "doctor" }: { entityType?: "doctor" | "chemist" }) {
+  const isChemist = entityType === "chemist";
   const [campaigns, setCampaigns] = useState<FieldCampaign[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [chemists, setChemists] = useState<FieldChemist[]>([]);
   const [visits, setVisits] = useState<FieldCampaignVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,17 +37,22 @@ export function CampaignPlanning() {
   const [submitting, setSubmitting] = useState(false);
 
   const [campaignId, setCampaignId] = useState("");
-  const [doctorId, setDoctorId] = useState("");
+  const [entityId, setEntityId] = useState("");
   const [visitDate, setVisitDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
 
   function load() {
     setLoading(true);
     setError("");
-    Promise.all([apiClient.campaigns(), apiClient.doctors(), apiClient.campaignVisits()])
-      .then(([campaignsRes, doctorsRes, visitsRes]) => {
+    Promise.all([
+      apiClient.campaigns(),
+      isChemist ? apiClient.chemists() : apiClient.doctors(),
+      apiClient.campaignVisits()
+    ])
+      .then(([campaignsRes, entitiesRes, visitsRes]) => {
         setCampaigns(campaignsRes.data);
-        setDoctors(doctorsRes.data);
+        if (isChemist) setChemists(entitiesRes.data as FieldChemist[]);
+        else setDoctors(entitiesRes.data as Doctor[]);
         setVisits(visitsRes.data);
         if (!campaignId && campaignsRes.data.length) setCampaignId(campaignsRes.data[0].id);
       })
@@ -48,18 +60,27 @@ export function CampaignPlanning() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [entityType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const filteredVisits = useMemo(
+    () => visits.filter((v) => (v.visitType ?? "doctor") === entityType),
+    [visits, entityType]
+  );
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(""); setMessage("");
     if (!campaignId) { setError("Please select a campaign."); return; }
-    if (!doctorId) { setError("Please select a doctor."); return; }
+    if (!entityId) { setError(`Please select a ${isChemist ? "chemist" : "doctor"}.`); return; }
     setSubmitting(true);
     try {
-      await apiClient.planCampaignVisit({ campaignId, doctorId, visitDate, notes: notes.trim() });
-      setMessage("Doctor added to your campaign plan.");
-      setDoctorId(""); setNotes("");
+      await apiClient.planCampaignVisit({
+        campaignId, visitType: entityType,
+        ...(isChemist ? { chemistId: entityId } : { doctorId: entityId }),
+        visitDate, notes: notes.trim()
+      });
+      setMessage(`${isChemist ? "Chemist" : "Doctor"} added to your campaign plan.`);
+      setEntityId(""); setNotes("");
       load();
     } catch (e2) {
       setError(e2 instanceof Error ? e2.message : "Unable to plan this visit");
@@ -90,10 +111,12 @@ export function CampaignPlanning() {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[12px] font-bold text-slate-700">Doctor</label>
-              <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 shadow-2xs">
-                <option value="">— Select doctor —</option>
-                {doctors.map((d) => <option key={d.id} value={d.id}>{d.name} — {d.specialty}</option>)}
+              <label className="text-[12px] font-bold text-slate-700">{isChemist ? "Chemist" : "Doctor"}</label>
+              <select value={entityId} onChange={(e) => setEntityId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 shadow-2xs">
+                <option value="">— Select {isChemist ? "chemist" : "doctor"} —</option>
+                {isChemist
+                  ? chemists.map((c) => <option key={c.id} value={c.id}>{c.dealerName}{c.city ? ` — ${c.city}` : ""}</option>)
+                  : doctors.map((d) => <option key={d.id} value={d.id}>{d.name} — {d.specialty}</option>)}
               </select>
             </div>
             <div className="space-y-1">
@@ -115,16 +138,16 @@ export function CampaignPlanning() {
       </section>
 
       <section className="space-y-2.5">
-        <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5"><Megaphone size={15} className="text-emerald-700" /> Your Planned Visits ({visits.length})</h2>
-        {!loading && visits.length === 0 && <p className="text-sm text-slate-500 italic px-1">No campaign visits planned yet.</p>}
+        <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5"><Megaphone size={15} className="text-emerald-700" /> Your Planned Visits ({filteredVisits.length})</h2>
+        {!loading && filteredVisits.length === 0 && <p className="text-sm text-slate-500 italic px-1">No campaign visits planned yet.</p>}
         <div className="space-y-2">
-          {visits.map((v) => (
+          {filteredVisits.map((v) => (
             <div key={v.id} className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-card">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-700 shrink-0"><Stethoscope size={14} /></div>
                   <div className="min-w-0">
-                    <h4 className="text-xs font-extrabold text-slate-900 truncate">{v.doctorName}</h4>
+                    <h4 className="text-xs font-extrabold text-slate-900 truncate">{isChemist ? v.chemistName : v.doctorName}</h4>
                     <p className="text-[10px] text-slate-500">{v.campaignName} · {formatDate(v.visitDate)}</p>
                   </div>
                 </div>

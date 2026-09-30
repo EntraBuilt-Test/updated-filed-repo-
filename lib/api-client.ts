@@ -214,8 +214,13 @@ export type FieldCampaignVisit = {
   campaignName?: string;
   employeeCode: string;
   employeeName?: string;
-  doctorId: string;
+  // Phase 5 — chemist campaign visits reuse this exact type; visitType
+  // picks which of doctorId/doctorName vs chemistId/chemistName applies.
+  visitType?: "doctor" | "chemist";
+  doctorId?: string | null;
   doctorName?: string;
+  chemistId?: string | null;
+  chemistName?: string;
   visitDate: string;
   source: "planned" | "deviation";
   status: "Planned" | "Completed" | "Cancelled" | "Pending Approval" | "Rejected";
@@ -223,6 +228,66 @@ export type FieldCampaignVisit = {
   rejectReason?: string | null;
   notes?: string;
   createdAt?: string;
+};
+
+// Phase 5 — the real Chemist Master (backend's DealerModel), same shape
+// precedent as Doctor above.
+export type FieldChemist = {
+  id: string;
+  dealerName: string;
+  city?: string | null;
+  patchName?: string | null;
+  contactPersonName?: string | null;
+  dealerPhone?: string | null;
+  status?: string;
+};
+
+// Phase 5 — RCPA's Brand column (real ProductBrandModel rows).
+export type FieldRcpaBrand = {
+  id: string;
+  brandName: string;
+};
+
+// Phase 5 — POB's product/pack picker (real ProductModel rows, SKU-level).
+export type FieldPobProduct = {
+  id: string;
+  productName?: string | null;
+  brandName?: string | null;
+  pack?: string | null;
+  name?: string | null;
+};
+
+// Phase 5 — Short Expiry, seeded from the admin's real rateMaster.
+export type FieldShortExpiryProduct = {
+  id: string;
+  medicineName: string;
+  expiryDate?: string | null;
+  batchNo?: string | null;
+};
+
+// Phase 5 — JCC colleague picker (real Employee collection).
+export type FieldJccColleague = {
+  employeeCode: string;
+  name: string;
+  designation?: string;
+};
+
+export type ChemistCallRcpaRow = { brandId?: string | null; brandName: string; myQty: number; compBrandName?: string | null; compQty?: number | null };
+export type ChemistCallPobRow = { productId: string; productName: string; qty: number };
+export type ChemistCallShortExpiryRow = { medicineName: string; expiryDate?: string | null; qty: number };
+export type ChemistCallJccRow = { employeeCode?: string | null; name: string; designation?: string };
+
+export type FieldChemistCall = {
+  id: string;
+  chemistId: string;
+  chemistName?: string;
+  visitDate: string;
+  visitDateOnly?: string;
+  rcpa: ChemistCallRcpaRow[];
+  pob: ChemistCallPobRow[];
+  shortExpiry: ChemistCallShortExpiryRow[];
+  jcc: ChemistCallJccRow[];
+  status?: string;
 };
 
 
@@ -475,7 +540,9 @@ export const apiClient = {
   campaignVisits(date?: string) {
     return request<FieldCampaignVisit[]>(`/field/campaign-visits${date ? `?date=${encodeURIComponent(date)}` : ""}`);
   },
-  planCampaignVisit(input: { campaignId: string; doctorId: string; visitDate: string; notes?: string }) {
+  // Phase 5 — visitType parameterizes the exact same route for a chemist
+  // instead of a parallel one; doctorId/chemistId are mutually exclusive.
+  planCampaignVisit(input: { campaignId: string; visitType?: "doctor" | "chemist"; doctorId?: string; chemistId?: string; visitDate: string; notes?: string }) {
     return request<FieldCampaignVisit>("/field/campaign-visits", { method: "POST", body: JSON.stringify(input) });
   },
   // Phase 2 — resolve a stranded planned campaign visit (Completed/Cancelled)
@@ -484,15 +551,40 @@ export const apiClient = {
   resolveCampaignVisit(id: string, input: { status: "Completed" | "Cancelled"; notes?: string }) {
     return request<FieldCampaignVisit>(`/field/campaign-visits/${id}/resolve`, { method: "POST", body: JSON.stringify(input) });
   },
-  // Phase 3 — deviation workflow (Plan toggle OFF)
+  // Phase 3 — deviation workflow (Plan toggle OFF). Phase 5 — `type` picks
+  // doctor vs chemist through the same routes.
   deviationTypes() { return request<string[]>("/field/deviation/types"); },
-  deviationTerritories(q?: string) {
-    return request<string[]>(`/field/deviation/territories${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  deviationTerritories(q?: string, type: "doctor" | "chemist" = "doctor") {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (type === "chemist") params.set("type", "chemist");
+    const qs = params.toString();
+    return request<string[]>(`/field/deviation/territories${qs ? `?${qs}` : ""}`);
   },
-  deviationDoctors(territory: string) {
-    return request<Doctor[]>(`/field/deviation/doctors?territory=${encodeURIComponent(territory)}`);
+  deviationDoctors(territory: string, type: "doctor" | "chemist" = "doctor") {
+    const params = new URLSearchParams({ territory });
+    if (type === "chemist") params.set("type", "chemist");
+    return request<(Doctor | FieldChemist & { specialty?: string })[]>(`/field/deviation/doctors?${params.toString()}`);
   },
-  requestDeviationVisit(input: { doctorId: string; deviationType: string; remarks?: string }) {
+  requestDeviationVisit(input: { visitType?: "doctor" | "chemist"; doctorId?: string; chemistId?: string; deviationType: string; remarks?: string }) {
     return request<FieldCampaignVisit>("/field/deviation-visits", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  // Phase 5 — Chemist Call execution
+  chemists() { return request<FieldChemist[]>("/field/chemists"); },
+  rcpaBrands() { return request<FieldRcpaBrand[]>("/field/rcpa-brands"); },
+  pobProducts() { return request<FieldPobProduct[]>("/field/products"); },
+  shortExpiryProducts() { return request<FieldShortExpiryProduct[]>("/field/short-expiry-products"); },
+  jccColleagues() { return request<FieldJccColleague[]>("/field/jcc-colleagues"); },
+  chemistCall(chemistId: string, date?: string) {
+    const params = new URLSearchParams({ chemistId });
+    if (date) params.set("date", date);
+    return request<FieldChemistCall | null>(`/field/chemist-calls?${params.toString()}`);
+  },
+  saveChemistCall(input: {
+    chemistId: string; visitDate?: string;
+    rcpa: ChemistCallRcpaRow[]; pob: ChemistCallPobRow[]; shortExpiry: ChemistCallShortExpiryRow[]; jcc: ChemistCallJccRow[];
+  }) {
+    return request<FieldChemistCall>("/field/chemist-calls", { method: "POST", body: JSON.stringify(input) });
   }
 };

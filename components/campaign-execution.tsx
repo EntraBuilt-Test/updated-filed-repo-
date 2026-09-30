@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ClipboardPlus, MapPin, RefreshCw, Search, Target } from "lucide-react";
 import { apiClient, type FieldCampaignVisit } from "@/lib/api-client";
-import type { Doctor } from "@zivira/types";
 
 // Phase 1 — Campaign Execution: "Today's Campaign", a real scoped read of
 // whatever Campaign Planning wrote for today's date (GET
@@ -19,6 +18,13 @@ import type { Doctor } from "@zivira/types";
 // tap one to request an off-plan visit (confirm modal -> remarks modal),
 // which lands as a Pending Approval row for the rep's manager to approve
 // or reject — it does not show as a live visit until approved.
+//
+// Phase 5 — the exact same component now also drives the chemist version
+// via the `entityType` prop, instead of a parallel component: every call
+// into apiClient's campaign/deviation methods already takes a
+// visitType/type param for this (see api-client.ts), so this file just
+// threads entityType through and reads chemistId/chemistName instead of
+// doctorId/doctorName when entityType === "chemist".
 function statusBadgeClasses(status: FieldCampaignVisit["status"]) {
   switch (status) {
     case "Completed": return "bg-emerald-50 text-emerald-800 border-emerald-300";
@@ -31,7 +37,10 @@ function statusBadgeClasses(status: FieldCampaignVisit["status"]) {
 
 const DEVIATION_TYPE_FALLBACK = ["Plan Change", "New Doctor", "Coverage Gap", "Emergency Call", "Other"];
 
-export function CampaignExecution() {
+type BrowseEntity = { id: string; name: string; specialty?: string | null; city?: string | null };
+
+export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doctor" | "chemist" }) {
+  const isChemist = entityType === "chemist";
   const [visits, setVisits] = useState<FieldCampaignVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,12 +52,12 @@ export function CampaignExecution() {
   const [territories, setTerritories] = useState<string[]>([]);
   const [territoryQuery, setTerritoryQuery] = useState("");
   const [territory, setTerritory] = useState("");
-  const [devDoctors, setDevDoctors] = useState<Doctor[]>([]);
+  const [devEntities, setDevEntities] = useState<BrowseEntity[]>([]);
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState("");
 
-  const [confirmingDoctor, setConfirmingDoctor] = useState<Doctor | null>(null);
-  const [remarksDoctor, setRemarksDoctor] = useState<Doctor | null>(null);
+  const [confirmingEntity, setConfirmingEntity] = useState<BrowseEntity | null>(null);
+  const [remarksEntity, setRemarksEntity] = useState<BrowseEntity | null>(null);
   const [deviationTypes, setDeviationTypes] = useState<string[]>(DEVIATION_TYPE_FALLBACK);
   const [deviationType, setDeviationType] = useState(DEVIATION_TYPE_FALLBACK[0]);
   const [remarks, setRemarks] = useState("");
@@ -66,6 +75,14 @@ export function CampaignExecution() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A pre-Phase-5 row has no visitType stored at all — that always meant
+  // "doctor", so an absent visitType is treated as "doctor" here rather
+  // than silently disappearing from the doctor screen.
+  const filteredVisits = useMemo(
+    () => visits.filter((v) => (v.visitType ?? "doctor") === entityType),
+    [visits, entityType]
+  );
+
   useEffect(() => {
     apiClient.deviationTypes().then((r) => {
       if (Array.isArray(r.data) && r.data.length) {
@@ -76,7 +93,7 @@ export function CampaignExecution() {
   }, []);
 
   function loadTerritories(q: string) {
-    apiClient.deviationTerritories(q.trim() || undefined)
+    apiClient.deviationTerritories(q.trim() || undefined, entityType)
       .then((r) => setTerritories(r.data))
       .catch(() => setTerritories([]));
   }
@@ -87,37 +104,42 @@ export function CampaignExecution() {
 
   function pickTerritory(t: string) {
     setTerritory(t);
-    setDevDoctors([]);
+    setDevEntities([]);
     setDevError("");
     setDevLoading(true);
-    apiClient.deviationDoctors(t)
-      .then((r) => setDevDoctors(r.data))
-      .catch((e) => setDevError(e instanceof Error ? e.message : "Unable to load doctors for this territory"))
+    apiClient.deviationDoctors(t, entityType)
+      .then((r) => setDevEntities((r.data as any[]).map((d) => ({ id: d.id, name: d.name ?? d.dealerName, specialty: d.specialty ?? null, city: d.city ?? null }))))
+      .catch((e) => setDevError(e instanceof Error ? e.message : `Unable to load ${entityType}s for this territory`))
       .finally(() => setDevLoading(false));
   }
 
-  function openConfirm(doctor: Doctor) {
+  function openConfirm(entity: BrowseEntity) {
     setDevMessage("");
-    setConfirmingDoctor(doctor);
+    setConfirmingEntity(entity);
   }
 
   function confirmYes() {
-    if (!confirmingDoctor) return;
-    setRemarksDoctor(confirmingDoctor);
-    setConfirmingDoctor(null);
+    if (!confirmingEntity) return;
+    setRemarksEntity(confirmingEntity);
+    setConfirmingEntity(null);
     setRemarks("");
     setDeviationType(deviationTypes[0]);
   }
 
   async function submitDeviation() {
-    if (!remarksDoctor) return;
+    if (!remarksEntity) return;
     setSubmitting(true);
     setDevError("");
     try {
-      await apiClient.requestDeviationVisit({ doctorId: remarksDoctor.id, deviationType, remarks: remarks.trim() });
-      setDevMessage(`Deviation request for ${remarksDoctor.name} sent to your manager for approval.`);
-      setDevDoctors((prev) => prev.filter((d) => d.id !== remarksDoctor.id));
-      setRemarksDoctor(null);
+      await apiClient.requestDeviationVisit({
+        visitType: entityType,
+        ...(isChemist ? { chemistId: remarksEntity.id } : { doctorId: remarksEntity.id }),
+        deviationType,
+        remarks: remarks.trim()
+      });
+      setDevMessage(`Deviation request for ${remarksEntity.name} sent to your manager for approval.`);
+      setDevEntities((prev) => prev.filter((d) => d.id !== remarksEntity.id));
+      setRemarksEntity(null);
       load();
     } catch (e) {
       setDevError(e instanceof Error ? e.message : "Unable to submit this deviation");
@@ -126,13 +148,15 @@ export function CampaignExecution() {
     }
   }
 
+  const label = isChemist ? "chemist" : "doctor";
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5"><Target size={15} className="text-emerald-700" /> Today&apos;s Campaign</h2>
           <p className="text-[11px] text-slate-500">
-            {planMode ? "Doctors planned for today across all your active campaigns." : "Browsing off-plan — pick a territory to find a doctor."}
+            {planMode ? `${isChemist ? "Chemists" : "Doctors"} planned for today across all your active campaigns.` : "Browsing off-plan — pick a territory to find a " + label + "."}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -156,42 +180,46 @@ export function CampaignExecution() {
       {planMode ? (
         <>
           {error && <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
-          {!loading && visits.length === 0 && !error && (
-            <p className="text-sm text-slate-500 italic px-1">Nothing planned for today — add doctors under Campaign Planning, or turn Plan off to find one off-plan.</p>
+          {!loading && filteredVisits.length === 0 && !error && (
+            <p className="text-sm text-slate-500 italic px-1">Nothing planned for today — add {label}s under Campaign Planning, or turn Plan off to find one off-plan.</p>
           )}
 
           <div className="space-y-2.5">
-            {visits.map((v) => (
-              <div key={v.id} className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-card space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-extrabold text-slate-900 truncate">{v.doctorName}</h4>
-                    <p className="text-[10px] text-slate-500">
-                      {v.source === "deviation" ? `Deviation${v.deviationType ? ` · ${v.deviationType}` : ""}` : v.campaignName}
-                    </p>
-                    {v.status === "Rejected" && v.rejectReason && (
-                      <p className="text-[10px] text-rose-600 mt-0.5">Reason: {v.rejectReason}</p>
-                    )}
+            {filteredVisits.map((v) => {
+              const targetId = isChemist ? v.chemistId : v.doctorId;
+              const targetName = isChemist ? v.chemistName : v.doctorName;
+              return (
+                <div key={v.id} className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-card space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-extrabold text-slate-900 truncate">{targetName}</h4>
+                      <p className="text-[10px] text-slate-500">
+                        {v.source === "deviation" ? `Deviation${v.deviationType ? ` · ${v.deviationType}` : ""}` : v.campaignName}
+                      </p>
+                      {v.status === "Rejected" && v.rejectReason && (
+                        <p className="text-[10px] text-rose-600 mt-0.5">Reason: {v.rejectReason}</p>
+                      )}
+                    </div>
+                    <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-black uppercase border ${statusBadgeClasses(v.status)}`}>
+                      {v.status}
+                    </span>
                   </div>
-                  <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-black uppercase border ${statusBadgeClasses(v.status)}`}>
-                    {v.status}
-                  </span>
+                  {v.status === "Planned" && targetId && (
+                    <Link
+                      href={isChemist ? `/field/chemist-call?chemistId=${encodeURIComponent(targetId)}` : `/field/dcr?doctorId=${encodeURIComponent(targetId)}`}
+                      className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200"
+                    >
+                      <ClipboardPlus size={13} /> {isChemist ? "Open Chemist Call" : "Log DCR for this visit"}
+                    </Link>
+                  )}
+                  {v.status === "Pending Approval" && (
+                    <p className="text-[11px] text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1.5">
+                      Awaiting your manager&apos;s approval — this visit isn&apos;t live yet.
+                    </p>
+                  )}
                 </div>
-                {v.status === "Planned" && (
-                  <Link
-                    href={`/field/dcr?doctorId=${encodeURIComponent(v.doctorId)}`}
-                    className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200"
-                  >
-                    <ClipboardPlus size={13} /> Log DCR for this visit
-                  </Link>
-                )}
-                {v.status === "Pending Approval" && (
-                  <p className="text-[11px] text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1.5">
-                    Awaiting your manager&apos;s approval — this visit isn&apos;t live yet.
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       ) : (
@@ -229,11 +257,11 @@ export function CampaignExecution() {
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 px-0.5">
                 <MapPin size={12} /> {territory}
               </div>
-              {devLoading && <p className="text-xs text-slate-500 px-1">Loading doctors...</p>}
-              {!devLoading && devDoctors.length === 0 && (
+              {devLoading && <p className="text-xs text-slate-500 px-1">Loading {label}s...</p>}
+              {!devLoading && devEntities.length === 0 && (
                 <p className="text-sm text-slate-500 italic px-1">No Data</p>
               )}
-              {devDoctors.map((d) => (
+              {devEntities.map((d) => (
                 <button
                   key={d.id}
                   type="button"
@@ -242,7 +270,7 @@ export function CampaignExecution() {
                 >
                   <div className="min-w-0">
                     <h4 className="text-xs font-extrabold text-slate-900 truncate">{d.name}</h4>
-                    <p className="text-[10px] text-slate-500">{d.specialty} · {d.city}</p>
+                    <p className="text-[10px] text-slate-500">{[d.specialty, d.city].filter(Boolean).join(" · ")}</p>
                   </div>
                   <span className="shrink-0 text-[10px] font-bold text-emerald-700">Add</span>
                 </button>
@@ -253,13 +281,13 @@ export function CampaignExecution() {
       )}
 
       {/* "You're Deviating Plan" confirmation modal */}
-      {confirmingDoctor && (
+      {confirmingEntity && (
         <div className="fixed inset-0 z-[90] bg-slate-950/70 flex items-center justify-center p-4">
           <div className="w-full max-w-xs bg-white rounded-2xl shadow-2xl p-4 space-y-3">
             <h3 className="text-sm font-black text-slate-900">You&apos;re Deviating Plan</h3>
-            <p className="text-xs text-slate-600">Do you want to continue with an off-plan visit to {confirmingDoctor.name}?</p>
+            <p className="text-xs text-slate-600">Do you want to continue with an off-plan visit to {confirmingEntity.name}?</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setConfirmingDoctor(null)} className="flex-1 py-2 text-xs font-bold text-slate-700 bg-slate-100 rounded-xl">No</button>
+              <button type="button" onClick={() => setConfirmingEntity(null)} className="flex-1 py-2 text-xs font-bold text-slate-700 bg-slate-100 rounded-xl">No</button>
               <button type="button" onClick={confirmYes} className="flex-1 py-2 text-xs font-bold text-white bg-emerald-700 rounded-xl">Yes</button>
             </div>
           </div>
@@ -267,11 +295,11 @@ export function CampaignExecution() {
       )}
 
       {/* Remarks modal */}
-      {remarksDoctor && (
+      {remarksEntity && (
         <div className="fixed inset-0 z-[90] bg-slate-950/70 flex items-center justify-center p-4">
           <div className="w-full max-w-xs bg-white rounded-2xl shadow-2xl p-4 space-y-3">
             <h3 className="text-sm font-black text-slate-900">Remarks</h3>
-            <p className="text-[11px] text-slate-500">{remarksDoctor.name}</p>
+            <p className="text-[11px] text-slate-500">{remarksEntity.name}</p>
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-700">Type</label>
               <select value={deviationType} onChange={(e) => setDeviationType(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800">
@@ -284,7 +312,7 @@ export function CampaignExecution() {
             </div>
             {devError && <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{devError}</p>}
             <div className="flex gap-2">
-              <button type="button" disabled={submitting} onClick={() => setRemarksDoctor(null)} className="flex-1 py-2 text-xs font-bold text-slate-700 bg-slate-100 rounded-xl disabled:opacity-60">Cancel</button>
+              <button type="button" disabled={submitting} onClick={() => setRemarksEntity(null)} className="flex-1 py-2 text-xs font-bold text-slate-700 bg-slate-100 rounded-xl disabled:opacity-60">Cancel</button>
               <button type="button" disabled={submitting} onClick={() => void submitDeviation()} className="flex-1 py-2 text-xs font-bold text-white bg-emerald-700 rounded-xl disabled:opacity-60">
                 {submitting ? "Sending..." : "Continue"}
               </button>

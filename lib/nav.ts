@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, LayoutGrid, MapPinned, Megaphone, PlaySquare, Stethoscope, UserCheck, UserCircle } from "lucide-react";
+import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, LayoutGrid, MapPinned, Megaphone, PlaySquare, Pill, Stethoscope, UserCheck, UserCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type FieldNavItem = {
@@ -19,6 +19,10 @@ export const fieldNav: FieldNavItem[] = [
   // guidance. A 9th bottom tab — tight at mobile width but still legible
   // with the existing text-[10px] label size the bar already uses.
   { title: "Campaign", href: "/field/campaign", icon: Megaphone },
+  // Phase 5 — chemist campaign planning/execution, reusing the exact same
+  // Campaign Planning/Execution components with entityType="chemist"
+  // (see app/field/chemist-campaign/page.tsx).
+  { title: "Chemist", href: "/field/chemist-campaign", icon: Pill },
   { title: "Attend", href: "/field/attendance", icon: UserCheck },
   // New tab — "Leave Apply": lets the MR submit a leave request straight
   // from the field portal, which routes to their reporting manager for
