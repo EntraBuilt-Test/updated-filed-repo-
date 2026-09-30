@@ -128,7 +128,13 @@ export function CampaignPlanning() {
                     <p className="text-[10px] text-slate-500">{v.campaignName} · {formatDate(v.visitDate)}</p>
                   </div>
                 </div>
-                <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-black uppercase border ${v.status === "Completed" ? "bg-emerald-50 text-emerald-800 border-emerald-300" : v.status === "Cancelled" ? "bg-slate-100 text-slate-600 border-slate-300" : "bg-amber-50 text-amber-800 border-amber-300"}`}>
+                <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-black uppercase border ${
+                  v.status === "Completed" ? "bg-emerald-50 text-emerald-800 border-emerald-300" :
+                  v.status === "Cancelled" ? "bg-slate-100 text-slate-600 border-slate-300" :
+                  v.status === "Pending Approval" ? "bg-sky-50 text-sky-800 border-sky-300" :
+                  v.status === "Rejected" ? "bg-rose-50 text-rose-800 border-rose-300" :
+                  "bg-amber-50 text-amber-800 border-amber-300"
+                }`}>
                   {v.status}
                 </span>
               </div>

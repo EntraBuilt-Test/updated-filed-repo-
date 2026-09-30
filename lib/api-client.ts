@@ -195,18 +195,21 @@ export type FieldCampaign = {
 
 export type FieldCampaignVisit = {
   id: string;
-  campaignId: string;
-  campaignName: string;
+  campaignId?: string | null;
+  campaignName?: string;
   employeeCode: string;
   employeeName?: string;
   doctorId: string;
   doctorName?: string;
   visitDate: string;
   source: "planned" | "deviation";
-  status: "Planned" | "Completed" | "Cancelled";
+  status: "Planned" | "Completed" | "Cancelled" | "Pending Approval" | "Rejected";
+  deviationType?: string | null;
+  rejectReason?: string | null;
   notes?: string;
   createdAt?: string;
 };
+
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://zivira-backend-swagger-ui.onrender.com/api";
 const TOKEN_KEY = "zivira.field.token";
@@ -459,5 +462,16 @@ export const apiClient = {
   // for it any more (DCR always logs "today").
   resolveCampaignVisit(id: string, input: { status: "Completed" | "Cancelled"; notes?: string }) {
     return request<FieldCampaignVisit>(`/field/campaign-visits/${id}/resolve`, { method: "POST", body: JSON.stringify(input) });
+  },
+  // Phase 3 — deviation workflow (Plan toggle OFF)
+  deviationTypes() { return request<string[]>("/field/deviation/types"); },
+  deviationTerritories(q?: string) {
+    return request<string[]>(`/field/deviation/territories${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  },
+  deviationDoctors(territory: string) {
+    return request<Doctor[]>(`/field/deviation/doctors?territory=${encodeURIComponent(territory)}`);
+  },
+  requestDeviationVisit(input: { doctorId: string; deviationType: string; remarks?: string }) {
+    return request<FieldCampaignVisit>("/field/deviation-visits", { method: "POST", body: JSON.stringify(input) });
   }
 };
