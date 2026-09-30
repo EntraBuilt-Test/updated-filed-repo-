@@ -1,13 +1,19 @@
 "use client";
 
 import clsx from "clsx";
-import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Bell, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fieldNav } from "@/lib/nav";
-import { clearToken } from "@/lib/api-client";
+import { apiClient, clearToken } from "@/lib/api-client";
 import { fetchCurrentLocation, readSavedLocation, type FieldLocation } from "@/lib/location";
+
+// Round 19 item 3 — bell + unread badge, polled the same way the
+// notifications page itself polls (20s), so the header always reflects
+// real unread notices from GET /field/notices/unread-count without
+// requiring the rep to already know the /field/notifications URL.
+const NOTICE_POLL_INTERVAL_MS = 20000;
 
 export function FieldShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,6 +21,7 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(true);
   const [location, setLocation] = useState<FieldLocation | null>(null);
   const [locating, setLocating] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   function signOut() {
     clearToken();
@@ -35,6 +42,16 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setLocation(readSavedLocation());
     void refreshLocation();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    function poll() {
+      apiClient.noticesUnreadCount().then((r) => { if (!cancelled) setUnreadCount(r.data.count); }).catch(() => {});
+    }
+    poll();
+    const interval = setInterval(poll, NOTICE_POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   if (pathname === "/field/login") {
@@ -77,6 +94,18 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
               <span className={`w-2 h-2 rounded-full ${locating ? 'bg-amber-500 animate-pulse' : 'bg-emerald-600 pulse-dot'}`}></span>
               <span>{locating ? "Locating..." : (location ? "GPS Active" : "Location req.")}</span>
             </button>
+            <Link
+              href="/field/notifications"
+              className="relative inline-flex items-center justify-center w-8 h-8 text-slate-600 hover:text-emerald-700 border border-slate-200 rounded-lg bg-white shadow-xs hover:bg-slate-50 active:scale-90 transition-all duration-150 ease-out cursor-pointer"
+              title="Notifications"
+            >
+              <Bell size={14} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center leading-none">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
             <button
               onClick={signOut}
               className="inline-flex items-center px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:text-rose-600 border border-slate-200 rounded-lg bg-white shadow-xs hover:bg-slate-50 active:scale-90 transition-all duration-150 ease-out cursor-pointer"

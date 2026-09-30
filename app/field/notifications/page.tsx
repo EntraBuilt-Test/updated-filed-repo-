@@ -53,6 +53,13 @@ export default function NotificationsPage() {
     return () => clearInterval(interval);
   }, [load]);
 
+  // Round 19 item 3 — opening this screen is the real "read" action;
+  // mark every one of this MR's own manager-sourced notices as read so the
+  // header bell's unread badge clears. Best-effort, never blocks the view.
+  useEffect(() => {
+    apiClient.markNoticesRead().catch(() => {});
+  }, []);
+
   return (
     <>
       <PageHeader

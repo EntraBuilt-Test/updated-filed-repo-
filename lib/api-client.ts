@@ -84,6 +84,100 @@ export type FieldTask = {
   createdAt?: string;
 };
 
+// Round 19 — My Quizzes. Mirrors GET /field/quizzes (list + this
+// employee's attempt summary), GET /field/quizzes/:id (answers stripped,
+// for the take-flow), and GET /field/quiz-attempts (full history).
+export type FieldQuizSummary = {
+  id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  questionCount: number;
+  totalPossible: number;
+  attemptCount: number;
+  bestScore: number | null;
+  lastAttemptAt?: string | null;
+};
+
+export type FieldQuizQuestion = { questionText: string; options: string[]; points: number };
+export type FieldQuizDetail = {
+  id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  questions: FieldQuizQuestion[];
+};
+
+export type FieldQuizAttemptResult = {
+  id: string;
+  quizId: string;
+  employeeCode: string;
+  answers: { questionIndex: number; selectedOptionIndex: number }[];
+  score: number;
+  totalPossible: number;
+  submittedAt: string;
+};
+
+export type FieldQuizAttemptHistory = {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  score: number;
+  totalPossible: number;
+  submittedAt: string;
+};
+
+// Round 19 — Camp entry (campEntry generic master). organizer is always
+// server-forced to the caller's own name; campCode is server-generated.
+export type FieldCampEntry = {
+  id: string;
+  campCode?: string;
+  campName?: string;
+  campDate?: string;
+  hospital?: string;
+  doctor?: string;
+  organizer?: string;
+  noOfPatients?: number;
+  productsDisplayed?: string;
+  remarks?: string;
+  status?: string;
+};
+
+// Round 19 — Market Survey entry (marketSurveyEntry generic master).
+// hq/patch/chemist are free text (see field.routes.ts comment — no
+// field-portal list endpoint exists yet for those master collections).
+export type FieldMarketSurveyEntry = {
+  id: string;
+  surveyDate?: string;
+  employee?: string;
+  hq?: string;
+  patch?: string;
+  chemist?: string;
+  competitorCompany?: string;
+  competitorBrand?: string;
+  competitorProduct?: string;
+  competitorMrp?: number;
+  availability?: "Available" | "Out of Stock" | "Short Supply";
+  feedback?: string;
+  remarks?: string;
+};
+
+// Round 19 — "My Coverage", field-scoped Coverage Analysis 2 row (same
+// shape the admin's report returns per employee, via
+// computeCoverageAnalysis2()).
+export type FieldCoverageTerritory = {
+  tc: number; dw: number; met: number; seen: number;
+  coverage: number | string; calAvg: number | string; amt: string; amtPerCall: string;
+};
+export type FieldCoverageRow = {
+  empCode: string;
+  fieldForceName: string;
+  designation: string;
+  hq: string;
+  ttlDrs: number;
+  territoryTypes: Record<"HQ" | "EX" | "OS", FieldCoverageTerritory>;
+};
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://zivira-backend-swagger-ui.onrender.com/api";
 const TOKEN_KEY = "zivira.field.token";
 
@@ -277,5 +371,38 @@ export const apiClient = {
   tasks() { return request<FieldTask[]>("/field/tasks"); },
   updateTaskStatus(id: string, status: "Pending" | "Completed") {
     return request<FieldTask>(`/field/tasks/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  },
+
+  // Round 19 item 3 — notification unread badge + mark-as-read
+  noticesUnreadCount() { return request<{ count: number }>("/field/notices/unread-count"); },
+  markNoticesRead() { return request<{ ok: boolean }>("/field/notices/mark-read", { method: "POST" }); },
+
+  // Round 19 item 1 — My Quizzes
+  quizzes() { return request<FieldQuizSummary[]>("/field/quizzes"); },
+  quiz(id: string) { return request<FieldQuizDetail>(`/field/quizzes/${id}`); },
+  submitQuizAttempt(id: string, answers: { questionIndex: number; selectedOptionIndex: number }[]) {
+    return request<FieldQuizAttemptResult>(`/field/quizzes/${id}/attempts`, { method: "POST", body: JSON.stringify({ answers }) });
+  },
+  quizAttempts() { return request<FieldQuizAttemptHistory[]>("/field/quiz-attempts"); },
+
+  // Round 19 item 2 — Camp entry + Market Survey entry
+  camps() { return request<FieldCampEntry[]>("/field/camps"); },
+  submitCamp(input: { campName: string; campDate: string; hospital?: string; doctor?: string; noOfPatients?: number; productsDisplayed?: string; remarks?: string }) {
+    return request<FieldCampEntry>("/field/camps", { method: "POST", body: JSON.stringify(input) });
+  },
+  marketSurveys() { return request<FieldMarketSurveyEntry[]>("/field/market-surveys"); },
+  submitMarketSurvey(input: {
+    surveyDate: string; hq?: string; patch?: string; chemist?: string;
+    competitorCompany?: string; competitorBrand: string; competitorProduct?: string;
+    competitorMrp?: number; availability?: "Available" | "Out of Stock" | "Short Supply";
+    feedback?: string; remarks?: string;
+  }) {
+    return request<FieldMarketSurveyEntry>("/field/market-surveys", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  // Round 19 item 4 — My Coverage (field-scoped Coverage Analysis 2)
+  coverage(month?: number, year?: number) {
+    const qs = [month ? `month=${month}` : "", year ? `year=${year}` : ""].filter(Boolean).join("&");
+    return request<FieldCoverageRow | null>(`/field/coverage${qs ? `?${qs}` : ""}`) as Promise<ApiEnvelope<FieldCoverageRow | null> & { month: number; year: number }>;
   }
 };
