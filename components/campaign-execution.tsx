@@ -108,7 +108,12 @@ export function CampaignExecution({ entityType = "doctor" }: { entityType?: "doc
     setDevError("");
     setDevLoading(true);
     apiClient.deviationDoctors(t, entityType)
-      .then((r) => setDevEntities((r.data as any[]).map((d) => ({ id: d.id, name: d.name ?? d.dealerName, specialty: d.specialty ?? null, city: d.city ?? null }))))
+      .then((r) => setDevEntities(r.data.map((d) => ({
+        id: d.id,
+        name: "name" in d ? d.name : d.dealerName,
+        specialty: "specialty" in d ? d.specialty ?? null : null,
+        city: d.city ?? null
+      }))))
       .catch((e) => setDevError(e instanceof Error ? e.message : `Unable to load ${entityType}s for this territory`))
       .finally(() => setDevLoading(false));
   }

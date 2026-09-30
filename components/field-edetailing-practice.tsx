@@ -32,7 +32,7 @@ export function FieldEDetailingPractice() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   async function open(item: FieldSlideDownload) {
     setBusyId(item.id);
@@ -50,7 +50,7 @@ export function FieldEDetailingPractice() {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] text-slate-500">Slides you've downloaded from Master → E-Detailing Download.</p>
+        <p className="text-[11px] text-slate-500">Slides you&apos;ve downloaded from Master → E-Detailing Download.</p>
         <button type="button" onClick={load} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 shrink-0">
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
         </button>
@@ -58,7 +58,7 @@ export function FieldEDetailingPractice() {
 
       {error && <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
       {!loading && downloads.length === 0 && !error && (
-        <p className="text-sm text-slate-500 italic px-1">Nothing downloaded yet — go to Master → E-Detailing Download to save a brand's slides for practice.</p>
+        <p className="text-sm text-slate-500 italic px-1">Nothing downloaded yet — go to Master → E-Detailing Download to save a brand&apos;s slides for practice.</p>
       )}
 
       <div className="space-y-2.5">

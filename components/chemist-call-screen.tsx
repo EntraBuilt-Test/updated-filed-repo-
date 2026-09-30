@@ -11,9 +11,7 @@ import {
   type ChemistCallShortExpiryRow,
   type FieldChemist,
   type FieldJccColleague,
-  type FieldPobProduct,
-  type FieldRcpaBrand,
-  type FieldShortExpiryProduct
+  type FieldPobProduct
 } from "@/lib/api-client";
 
 // Phase 5 — the Chemist Call execution screen (opens once a chemist is

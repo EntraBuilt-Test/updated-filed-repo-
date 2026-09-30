@@ -141,7 +141,6 @@ export function DcrForm() {
     } catch {
       // Corrupted or inaccessible localStorage — safe to ignore, form just starts blank.
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctors, searchParams]);
 
   function saveDraft() {

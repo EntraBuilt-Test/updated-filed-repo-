@@ -35,7 +35,7 @@ export function FieldEDetailingDownload() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const downloadedIds = useMemo(() => new Set(downloads.map((d) => d.slideId)), [downloads]);
 

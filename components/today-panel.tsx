@@ -143,10 +143,15 @@ export function TodayPanel() {
   // comment on readTodayAttendance above).
   useEffect(() => {
     const code = dashboard?.profile.employeeCode;
+    // `attendance` is read only to short-circuit once it's already set (by
+    // this effect, or by a real check-in/check-out elsewhere) — it's safe
+    // to list as a dep: re-running this effect after attendance changes
+    // just re-checks the guard and returns immediately without calling
+    // setAttendance again, so there's no re-render loop.
     if (!code || attendance) return;
     const saved = readTodayAttendance(code);
     if (saved) setAttendance(saved as Attendance);
-  }, [dashboard?.profile.employeeCode]);
+  }, [dashboard?.profile.employeeCode, attendance]);
 
   const hasCheckedIn = Boolean(attendance?.checkInAt) || Boolean(dashboard?.today.attendanceMarked);
   const hasCheckedOut = Boolean(attendance?.checkOutAt);
