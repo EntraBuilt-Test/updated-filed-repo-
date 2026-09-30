@@ -38,7 +38,22 @@ export type FieldSlide = {
   fileName?: string | null;
   uploadedOn?: string | null;
   mimeType?: string | null;
+  pages?: number | null;
   status?: string;
+};
+
+// Phase 4 — the rep's own download-state for a slide (My Activity ->
+// E-Detailing Practice reads this, not the raw slide list).
+export type FieldSlideDownload = {
+  id: string;
+  slideId: string;
+  fileName?: string | null;
+  division?: string | null;
+  subDivision?: string | null;
+  brand?: string | null;
+  mimeType?: string | null;
+  pages?: number | null;
+  downloadedAt?: string | null;
 };
 
 export type FieldManual = {
@@ -403,6 +418,12 @@ export const apiClient = {
   },
   downloadSlide(id: string, fileName: string) { return downloadFile(`/field/slides/${id}/download`, fileName); },
   viewSlideBlobUrl(id: string) { return fetchBlobUrl(`/field/slides/${id}/download`); },
+  // Phase 4 — records the slide as downloaded for this rep (My Activity ->
+  // E-Detailing Practice); does not itself fetch the file bytes twice.
+  markSlideDownloaded(id: string) {
+    return request<FieldSlideDownload>(`/field/slides/${id}/mark-downloaded`, { method: "POST" });
+  },
+  slideDownloads() { return request<FieldSlideDownload[]>("/field/slide-downloads"); },
 
   manuals() { return request<FieldManual[]>("/field/manuals"); },
   downloadManual(id: string, fileName: string) { return downloadFile(`/field/manuals/${id}/download`, fileName); },

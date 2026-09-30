@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckSquare, FileImage, FileText, HelpCircle, ListChecks, Receipt, Search, Stethoscope, Target, Tent, Wallet } from "lucide-react";
+import { CheckSquare, FileText, HelpCircle, ListChecks, Receipt, Search, Stethoscope, Target, Tent, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/page-components";
 
 // Round 18 — "Reports" hub: modeled on sanpharma's own Activity Reports /
@@ -17,8 +17,10 @@ import { PageHeader } from "@/components/page-components";
 // Market Survey (Item 2) live as sub-tabs on the Tour Plan screen instead
 // (see app/field/tour-plan/page.tsx), so they're linked here via the same
 // ?tab= deep-link pattern "My Expenses" already used.
+// Phase 4 — "My Slides" moved to Master -> E-Detailing Download (same
+// real GET /field/slides collection, reworked into the reference app's
+// brand-list-with-page-count format); no longer linked from here.
 const REPORT_LINKS = [
-  { title: "My Slides", href: "/field/reports/slides", icon: FileImage, description: "E-Detailing materials uploaded by Admin — browse and view or download." },
   { title: "My Leave", href: "/field/leave", icon: CheckSquare, description: "Leave status history plus your CL / PL / SL / LOP balance." },
   { title: "My Activity Status", href: "/field/reports/activity", icon: ListChecks, description: "Activities tracked against you and their completion state." },
   { title: "My Tasks", href: "/field/reports/tasks", icon: Stethoscope, description: "Tasks your manager or admin assigned to you." },

@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, MapPinned, Megaphone, Stethoscope, UserCheck, UserCircle } from "lucide-react";
+import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, LayoutGrid, MapPinned, Megaphone, PlaySquare, Stethoscope, UserCheck, UserCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type FieldNavItem = {
@@ -33,5 +33,13 @@ export const fieldNav: FieldNavItem[] = [
   // coordinator asked for a real top-level destination and the existing
   // bar (7 items) still fits one more icon+label at this width.
   { title: "Reports", href: "/field/reports", icon: FileBarChart },
+  // Phase 4 — new top-level "Master" (E-Detailing Download, moved out of
+  // Reports/My Slides) and "My Activity" (E-Detailing Practice)
+  // destinations, mirroring the reference app's own Master / My Activity
+  // sidebar menu groups. With Campaign (Phase 1) this bar is now 11 tabs,
+  // too many for a fixed grid at mobile width — field-shell.tsx scrolls
+  // it horizontally instead.
+  { title: "Master", href: "/field/master", icon: LayoutGrid },
+  { title: "Activity", href: "/field/activity", icon: PlaySquare },
   { title: "Profile", href: "/field/profile", icon: UserCircle }
 ];

@@ -120,8 +120,12 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
       
       <main className="flex-1 px-4 pt-4 pb-6 space-y-4"><CheckoutGuard>{children}</CheckoutGuard></main>
       
+      {/* Phase 4 — 11 tabs no longer fit a fixed grid at mobile width
+          (grid-cols-9 was already tight at 9); scrolls horizontally
+          instead, each tab a fixed min-width so nothing gets squeezed
+          unreadably thin. */}
       {navOpen && (
-        <nav className="fixed bottom-0 w-full max-w-md mx-auto grid grid-cols-9 border-t border-slate-200 bg-white/95 backdrop-blur-md z-40 pb-safe" aria-label="Field navigation">
+        <nav className="fixed bottom-0 w-full max-w-md mx-auto flex overflow-x-auto border-t border-slate-200 bg-white/95 backdrop-blur-md z-40 pb-safe" aria-label="Field navigation">
           {fieldNav.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -129,7 +133,7 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
             return (
               <Link
                 className={clsx(
-                  "flex flex-col items-center justify-center min-h-[62px] gap-1 text-[10px] font-extrabold transition-colors",
+                  "flex flex-col items-center justify-center min-h-[62px] w-[64px] shrink-0 gap-1 text-[10px] font-extrabold transition-colors",
                   active ? "text-emerald-800 bg-emerald-50/50" : "text-slate-500 hover:text-emerald-700"
                 )}
                 href={item.href}
