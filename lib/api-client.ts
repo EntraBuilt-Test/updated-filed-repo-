@@ -178,6 +178,36 @@ export type FieldCoverageRow = {
   territoryTypes: Record<"HQ" | "EX" | "OS", FieldCoverageTerritory>;
 };
 
+// Phase 1 — Campaign Planning & Execution ("Call Manager" reference
+// build). FieldCampaign mirrors the admin's campaignMaster generic-master
+// row; FieldCampaignVisit mirrors a real CampaignVisitModel row (see the
+// backend model for the schema rationale — a clean employeeCode/doctorId
+// FK the later Deviation phase will build on).
+export type FieldCampaign = {
+  id: string;
+  campaignName: string;
+  brand?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  description?: string | null;
+  status?: string;
+};
+
+export type FieldCampaignVisit = {
+  id: string;
+  campaignId: string;
+  campaignName: string;
+  employeeCode: string;
+  employeeName?: string;
+  doctorId: string;
+  doctorName?: string;
+  visitDate: string;
+  source: "planned" | "deviation";
+  status: "Planned" | "Completed" | "Cancelled";
+  notes?: string;
+  createdAt?: string;
+};
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://zivira-backend-swagger-ui.onrender.com/api";
 const TOKEN_KEY = "zivira.field.token";
 
@@ -404,5 +434,14 @@ export const apiClient = {
   coverage(month?: number, year?: number) {
     const qs = [month ? `month=${month}` : "", year ? `year=${year}` : ""].filter(Boolean).join("&");
     return request<FieldCoverageRow | null>(`/field/coverage${qs ? `?${qs}` : ""}`) as Promise<ApiEnvelope<FieldCoverageRow | null> & { month: number; year: number }>;
+  },
+
+  // Phase 1 — Campaign Planning & Execution
+  campaigns() { return request<FieldCampaign[]>("/field/campaigns"); },
+  campaignVisits(date?: string) {
+    return request<FieldCampaignVisit[]>(`/field/campaign-visits${date ? `?date=${encodeURIComponent(date)}` : ""}`);
+  },
+  planCampaignVisit(input: { campaignId: string; doctorId: string; visitDate: string; notes?: string }) {
+    return request<FieldCampaignVisit>("/field/campaign-visits", { method: "POST", body: JSON.stringify(input) });
   }
 };

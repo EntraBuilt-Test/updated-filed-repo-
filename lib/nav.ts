@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, MapPinned, Stethoscope, UserCheck, UserCircle } from "lucide-react";
+import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, MapPinned, Megaphone, Stethoscope, UserCheck, UserCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type FieldNavItem = {
@@ -12,6 +12,13 @@ export const fieldNav: FieldNavItem[] = [
   { title: "DCR", href: "/field/dcr", icon: ClipboardPlus },
   { title: "Doctors", href: "/field/doctors", icon: Stethoscope },
   { title: "Tour", href: "/field/tour-plan", icon: MapPinned },
+  // Phase 1 of the "Call Manager" reference build — Campaign Planning &
+  // Execution gets its own top-level nav entry (mirroring the reference
+  // app's own "Campaign" menu group with its two Planning/Execution
+  // sub-tabs), placed right next to Tour Plan per the coordinator's
+  // guidance. A 9th bottom tab — tight at mobile width but still legible
+  // with the existing text-[10px] label size the bar already uses.
+  { title: "Campaign", href: "/field/campaign", icon: Megaphone },
   { title: "Attend", href: "/field/attendance", icon: UserCheck },
   // New tab — "Leave Apply": lets the MR submit a leave request straight
   // from the field portal, which routes to their reporting manager for
