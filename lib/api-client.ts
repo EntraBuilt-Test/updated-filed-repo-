@@ -408,6 +408,7 @@ export const apiClient = {
   // logged against them. Other callers (dashboard "recent activity" etc.)
   // can still pass a smaller limit.
   dcrs(limit?: number) { return request<DcrExtended[]>(`/field/dcrs${limit ? `?limit=${limit}` : "?limit=500"}`); },
+  deleteDcr(id: string) { return request<{ deleted: boolean; id: string }>(`/field/dcrs/${id}`, { method: "DELETE" }); },
   submitDcr(input: {
     doctorId?: string; productsDetailed: string[]; notes?: string;
     callSession?: "MORNING"|"AFTERNOON"|"EVENING"; callTime?: string;
@@ -493,12 +494,14 @@ export const apiClient = {
   applyLeave(input: { reason: string; customReason?: string; days: number; fromDate?: string }) {
     return request<LeaveApplication>("/field/leave-applications", { method: "POST", body: JSON.stringify(input) });
   },
+  deleteLeaveApplication(id: string) { return request<{ deleted: boolean; id: string }>(`/field/leave-applications/${id}`, { method: "DELETE" }); },
 
   // PRD 12.5 follow-up — Expense Claims linked to a Tour Plan's GST branch
   expenseClaims() { return request<ExpenseClaim[]>("/field/expense-claims"); },
   submitExpenseClaim(input: { tpId: string; category: ExpenseClaimCategory; expenseDate: string; amountRs: number; description?: string }) {
     return request<ExpenseClaim>("/field/expense-claims", { method: "POST", body: JSON.stringify(input) });
   },
+  deleteExpenseClaim(claimId: string) { return request<{ deleted: boolean; claimId: string }>(`/field/expense-claims/${claimId}`, { method: "DELETE" }); },
 
   // Manager endpoints (for manager-role field users)
   managerDashboard() { return request<ManagerDashboard>("/manager/dashboard"); },

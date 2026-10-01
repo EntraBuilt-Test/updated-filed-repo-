@@ -21,7 +21,7 @@
 // reflects the new visit in both counts and the table — no separate
 // "refresh after submit" wiring needed.
 import type { DcrExtended, Doctor, VisitSummaryRow } from "@zivira/types";
-import { RefreshCw, Stethoscope } from "lucide-react";
+import { RefreshCw, Stethoscope, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import { StatusBadge } from "./page-components";
@@ -46,6 +46,7 @@ export function DoctorDcrReport() {
   const [visitSummaryByDoctor, setVisitSummaryByDoctor] = useState<Record<string, VisitSummaryRow>>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -84,6 +85,23 @@ export function DoctorDcrReport() {
   useEffect(() => {
     void load();
   }, []);
+
+  // Coordinator follow-up round -- real server-side delete, only offered
+  // (safety-gated server-side too) for DCRs not yet manager-approved. The
+  // backend also reverts any campaign visit this DCR closed out and
+  // cleans up the mirrored admin approval-queue row.
+  async function deleteDcr(id: string) {
+    if (!window.confirm("Delete this DCR entry? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      await apiClient.deleteDcr(id);
+      await load();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to delete this DCR entry.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <>
@@ -124,7 +142,7 @@ export function DoctorDcrReport() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                     <thead>
                       <tr>
-                        {["Date", "Status", "Products", "Notes"].map((heading) => (
+                        {["Date", "Status", "Products", "Notes", "Delete"].map((heading) => (
                           <th
                             key={heading}
                             style={{
@@ -157,6 +175,21 @@ export function DoctorDcrReport() {
                           </td>
                           <td style={{ padding: "8px", borderBottom: "1px solid var(--line)", wordBreak: "break-word" }}>
                             {visit.notes ? visit.notes : <span className="muted">—</span>}
+                          </td>
+                          <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>
+                            {(visit.status === "SUBMITTED" || visit.status === "REJECTED") ? (
+                              <button
+                                type="button"
+                                onClick={() => deleteDcr(visit.id)}
+                                disabled={deletingId === visit.id}
+                                title="Delete this DCR entry"
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger, #dc2626)", padding: 4, opacity: deletingId === visit.id ? 0.4 : 1 }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            ) : (
+                              <span className="muted" style={{ fontSize: 11 }}>—</span>
+                            )}
                           </td>
                         </tr>
                       ))}

@@ -3,6 +3,7 @@
 
 import type { LeaveApplication, LeaveReason } from "@zivira/types";
 import { useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { apiClient, ApiError, type FieldLeaveEntitlement } from "@/lib/api-client";
 
 function formatDate(iso: string) {
@@ -37,10 +38,10 @@ export function LeaveApply() {
   // attachment until one is added.
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // No backend withdraw/cancel endpoint exists for leave applications yet —
-  // this tracks which pending request is showing the honest "not supported"
-  // message, keyed by application id.
-  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  // Coordinator follow-up round -- a real DELETE /field/leave-applications/:id
+  // now exists (server-side gated to PENDING/REJECTED only), so "Withdraw"
+  // on a pending request and "Delete" on a rejected one are both real now.
+  const [deletingLeaveId, setDeletingLeaveId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -75,9 +76,17 @@ export function LeaveApply() {
 
   const visibleApplications = leaveTab === "all" ? applications : applications.filter(a => a.status === "APPROVED");
 
-  function handleWithdrawClick(id: string) {
-    setWithdrawing(id);
-    setTimeout(() => setWithdrawing(current => (current === id ? null : current)), 4000);
+  async function deleteLeaveRequest(id: string, isWithdraw: boolean) {
+    if (!window.confirm(isWithdraw ? "Withdraw this leave request?" : "Delete this leave request? This cannot be undone.")) return;
+    setDeletingLeaveId(id);
+    try {
+      await apiClient.deleteLeaveApplication(id);
+      await load();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to delete this leave request.");
+    } finally {
+      setDeletingLeaveId(null);
+    }
   }
 
   // No backend leave-slip/PDF endpoint exists — build a real, printable
@@ -402,8 +411,9 @@ export function LeaveApply() {
                     <span className="text-slate-500 font-medium">Routed to Regional Office Review</span>
                     <button
                       type="button"
-                      onClick={() => handleWithdrawClick(app.id)}
-                      className="text-red-600 font-bold hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md border border-red-200/60"
+                      disabled={deletingLeaveId === app.id}
+                      onClick={() => deleteLeaveRequest(app.id, true)}
+                      className="text-red-600 font-bold hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md border border-red-200/60 disabled:opacity-40"
                     >
                       Withdraw
                     </button>
@@ -412,15 +422,18 @@ export function LeaveApply() {
                 {isRejected && (
                   <>
                     <span className="text-slate-500 font-medium">Rejected: {app.rejectReason}</span>
+                    <button
+                      type="button"
+                      disabled={deletingLeaveId === app.id}
+                      onClick={() => deleteLeaveRequest(app.id, false)}
+                      title="Delete this leave request"
+                      className="text-slate-400 hover:text-red-600 p-1 disabled:opacity-40"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </>
                 )}
               </div>
-
-              {withdrawing === app.id && (
-                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
-                  Withdraw requests aren&apos;t supported by the backend yet — please ask your manager to reject it instead.
-                </p>
-              )}
             </article>
           );
         })}

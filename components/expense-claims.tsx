@@ -1,7 +1,7 @@
 "use client";
 
 import type { ExpenseClaim, ExpenseClaimCategory, TourPlan } from "@zivira/types";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 
@@ -24,6 +24,7 @@ export function ExpenseClaims() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
   // Round 18 — scroll down to the real claims summary below (this already
   // IS "My Expenses" — a full submission + history view) right after a
   // successful submit, instead of leaving the rep stranded on the
@@ -42,6 +43,23 @@ export function ExpenseClaims() {
   useEffect(() => { refresh(); }, []);
 
   const selectedTp = eligibleTps.find((tp) => tp.tpId === tpId);
+
+  // Coordinator follow-up round -- real server-side delete, gated to
+  // SUBMITTED/REJECTED claims (an approved/settled claim can't be deleted,
+  // enforced server-side too); the backend also reverses the claim's
+  // amount out of the admin-facing Expense Approval (Active) mirror.
+  async function deleteClaim(claimId: string) {
+    if (!window.confirm("Delete expense claim " + claimId + "? This cannot be undone.")) return;
+    setDeletingClaimId(claimId);
+    try {
+      await apiClient.deleteExpenseClaim(claimId);
+      refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to delete this expense claim.");
+    } finally {
+      setDeletingClaimId(null);
+    }
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -225,6 +243,19 @@ export function ExpenseClaims() {
                 <p className="text-[10px] text-rose-600 bg-rose-50 p-2 rounded-lg mt-2 relative z-10">
                   Reason: {c.rejectReason}
                 </p>
+              )}
+              {c.status !== "APPROVED" && (
+                <div className="flex justify-end mt-1.5 relative z-10">
+                  <button
+                    type="button"
+                    disabled={deletingClaimId === c.claimId}
+                    onClick={() => deleteClaim(c.claimId)}
+                    title="Delete this claim"
+                    className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 disabled:opacity-40"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               )}
             </div>
           ))}
