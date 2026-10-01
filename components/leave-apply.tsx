@@ -4,7 +4,7 @@
 import type { LeaveApplication, LeaveReason } from "@zivira/types";
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { apiClient, ApiError, type FieldLeaveEntitlement } from "@/lib/api-client";
+import { apiClient, ApiError } from "@/lib/api-client";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -19,7 +19,6 @@ export function LeaveApply() {
   // history) extended with the entitlement/balance half, per the
   // coordinator's explicit "extend, don't duplicate" guidance, rather than
   // a brand-new screen.
-  const [entitlement, setEntitlement] = useState<FieldLeaveEntitlement[]>([]);
   const historyRef = useRef<HTMLDivElement | null>(null);
   const [reason, setReason] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -46,11 +45,10 @@ export function LeaveApply() {
   async function load() {
     setLoading(true);
     try {
-      const [reasonsRes, appsRes, entitlementRes] = await Promise.all([apiClient.leaveReasons(), apiClient.leaveApplications(), apiClient.leaveEntitlement().catch(() => ({ data: [] as FieldLeaveEntitlement[] }))]);
+      const [reasonsRes, appsRes] = await Promise.all([apiClient.leaveReasons(), apiClient.leaveApplications()]);
       setReasons(reasonsRes.data);
       if (!reason && reasonsRes.data.length) setReason(reasonsRes.data[0]);
       setApplications(appsRes.data);
-      setEntitlement(entitlementRes.data);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load leave data");
     } finally {
@@ -312,25 +310,11 @@ export function LeaveApply() {
         </form>
       </section>
 
-      {entitlement.length > 0 && (
-        <section className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-card space-y-2.5">
-          <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">Leave Balance {entitlement[0].year ? `(${entitlement[0].year})` : ""}</h2>
-          <div className="grid grid-cols-4 gap-2">
-            {([
-              ["CL", entitlement[0].balanceCl],
-              ["PL", entitlement[0].balancePl],
-              ["SL", entitlement[0].balanceSl],
-              ["LOP", entitlement[0].balanceLop]
-            ] as const).map(([label, value]) => (
-              <div key={label} className="bg-slate-50 rounded-xl border border-slate-200 p-2 text-center">
-                <p className="text-[10px] font-bold text-slate-500 uppercase">{label}</p>
-                <p className="text-base font-black text-slate-900">{value ?? "—"}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-slate-400">Balance remaining out of your eligibility for the year, as set by Admin.</p>
-        </section>
-      )}
+      {/* Coordinator follow-up round (Item 3) -- the real "Annual Balance
+          Quota" card UI now lives in app/field/leave/page.tsx (driven by
+          this same real GET /field/leave-entitlement data this component
+          already fetches below), so this duplicate plain CL/PL/SL/LOP grid
+          was removed rather than showing the same numbers twice. */}
 
       <section ref={historyRef} className="space-y-3 pt-1">
         <div className="flex items-center justify-between">
