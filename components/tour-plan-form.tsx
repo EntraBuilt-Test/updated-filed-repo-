@@ -1,7 +1,7 @@
 "use client";
 
 import type { CompanyBranch, TourPlan, TourPlanLocation } from "@zivira/types";
-import { Plus, Send, X } from "lucide-react";
+import { Plus, Send, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { apiClient, ApiError } from "@/lib/api-client";
 
@@ -31,6 +31,7 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [conflictTpId, setConflictTpId] = useState<string | null>(null);
+  const [deletingTpId, setDeletingTpId] = useState<string | null>(null);
   const [addingToExisting, setAddingToExisting] = useState(false);
   // Round 18 — after a successful submit, scroll down to the real "Cycle
   // History & Approvals" list below (this already IS this MR's own Tour
@@ -40,6 +41,23 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
 
   function refresh() {
     apiClient.tourPlans().then((r) => setTourPlans(r.data)).catch(() => {});
+  }
+
+  // Item B (post-launch robustness round) -- "Cycle History & Approvals"
+  // accumulated every cycle ever submitted with no way to remove one. Real
+  // server-side delete (also clears the admin-facing mirrored approvalTp
+  // row on the backend), not a client-only hide.
+  async function deleteTourPlan(tpId: string) {
+    if (!window.confirm("Delete Tour Plan " + tpId + "? This cannot be undone.")) return;
+    setDeletingTpId(tpId);
+    try {
+      await apiClient.deleteTourPlan(tpId);
+      refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to delete Tour Plan.");
+    } finally {
+      setDeletingTpId(null);
+    }
   }
 
   useEffect(() => {
@@ -352,9 +370,20 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
                   <p className="text-[11px] text-slate-500 font-medium">Cycle: {tp.month}</p>
                 </div>
               </div>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border ${statusBadgeClass(tp.status)}`}>
-                {tp.status}
-              </span>
+              <div className="flex items-center space-x-1.5">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border ${statusBadgeClass(tp.status)}`}>
+                  {tp.status}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => deleteTourPlan(tp.tpId)}
+                  disabled={deletingTpId === tp.tpId}
+                  title="Delete this Tour Plan"
+                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-40"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             <div className="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl space-y-1 border border-slate-100">
               <p><span className="font-bold text-slate-800">{tp.locations.length} location(s)</span></p>

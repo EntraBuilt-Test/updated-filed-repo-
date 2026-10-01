@@ -466,6 +466,9 @@ export const apiClient = {
   addTourPlanLocations(tpId: string, locations: TourPlanLocation[]) {
     return request<TourPlan>(`/field/tour-plans/${tpId}/locations`, { method: "PATCH", body: JSON.stringify({ locations }) });
   },
+  deleteTourPlan(tpId: string) {
+    return request<{ deleted: boolean; tpId: string }>(`/field/tour-plans/${tpId}`, { method: "DELETE" });
+  },
 
   // Zivira_Project_Basic.docx Topic 3 — Salary Integration Engine (self view)
   payrollStatus(month?: string) {
