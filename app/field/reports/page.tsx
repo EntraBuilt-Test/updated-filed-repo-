@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckSquare, FileText, HelpCircle, ListChecks, Receipt, Search, Stethoscope, Target, Tent, Wallet } from "lucide-react";
+import { CheckSquare, FileText, HelpCircle, ListChecks, Megaphone, Receipt, Search, Stethoscope, Target, Tent, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/page-components";
 
 // Round 18 — "Reports" hub: modeled on sanpharma's own Activity Reports /
@@ -30,6 +30,7 @@ const REPORT_LINKS = [
   { title: "Camp Entry", href: "/field/tour-plan?tab=camp", icon: Tent, description: "Log a Camp you organized and view your past camp entries." },
   { title: "Market Survey", href: "/field/tour-plan?tab=market-survey", icon: Search, description: "Log a competitor Market Survey and view your past submissions." },
   { title: "Manuals", href: "/field/reports/manuals", icon: FileText, description: "Reference documents uploaded by Admin — download to view." },
+  { title: "Circulars", href: "/field/reports/circulars", icon: Megaphone, description: "Files Admin sent to your designation — download to view." },
   { title: "My DCR History", href: "/field/doctors?tab=dcr-report", icon: Receipt, description: "Every DCR you've ever logged, grouped by doctor." }
 ];
 

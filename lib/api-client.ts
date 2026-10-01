@@ -98,6 +98,15 @@ export type FieldManual = {
   status?: string;
 };
 
+// Item 4 (post-launch robustness round) -- File Upload (Designation-wise)
+// circulars targeted at this rep's designation, same shape as FieldManual.
+export type FieldCircular = {
+  id: string;
+  subject?: string | null;
+  fileName?: string | null;
+  uploadedOn?: string | null;
+};
+
 // Leave Entitlement - Entry generic-master row, matched to this employee by
 // name server-side (see field.routes.ts's nameMatchesEmployee) — it has no
 // employeeCode stored on the row itself.
@@ -542,6 +551,10 @@ export const apiClient = {
   manuals() { return request<FieldManual[]>("/field/manuals"); },
   downloadManual(id: string, fileName: string) { return downloadFile(`/field/manuals/${id}/download`, fileName); },
 
+  // Item 4 (post-launch robustness round)
+  circulars() { return request<FieldCircular[]>("/field/circulars"); },
+  downloadCircular(id: string, fileName: string) { return downloadFile(`/field/circulars/${id}/download`, fileName); },
+
   leaveEntitlement() { return request<FieldLeaveEntitlement[]>("/field/leave-entitlement"); },
 
   activityStatus() { return request<FieldActivityStatus[]>("/field/activity-status"); },
@@ -550,6 +563,10 @@ export const apiClient = {
   updateTaskStatus(id: string, status: "Pending" | "Completed") {
     return request<FieldTask>(`/field/tasks/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
   },
+
+  // Item 12 (post-launch robustness round) -- real Flash News/Notice
+  // Board/Quote of the Week/Talk to Us content admin actually saved.
+  announcements() { return request<{ flashNews: { content: string } | null; noticeBoard: { content1: string; content2: string; content3: string } | null; quoteOfTheWeek: { quote: string } | null; talkToUs: { content: string } | null }>("/field/announcements"); },
 
   // Round 19 item 3 — notification unread badge + mark-as-read
   noticesUnreadCount() { return request<{ count: number }>("/field/notices/unread-count"); },

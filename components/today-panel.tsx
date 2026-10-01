@@ -58,6 +58,12 @@ export function TodayPanel() {
   const [highPriorityOnly, setHighPriorityOnly] = useState(false);
   const [visitTab, setVisitTab] = useState<"all" | "pending" | "completed">("all");
   const [routeOptimized, setRouteOptimized] = useState(false);
+  // Item 12 (post-launch robustness round) -- real Flash News/Quote of the
+  // Week values, surfaced here for the first time (previously admin-only).
+  const [flashNews, setFlashNews] = useState<string | null>(null);
+  const [quoteOfWeek, setQuoteOfWeek] = useState<string | null>(null);
+  const [noticeBoard, setNoticeBoard] = useState<string[] | null>(null);
+  const [talkToUs, setTalkToUs] = useState<string | null>(null);
 
   async function loadDashboard() {
     setLoading(true);
@@ -65,6 +71,20 @@ export function TodayPanel() {
     try {
       const response = await apiClient.dashboard();
       setDashboard(response.data);
+      try {
+        const annRes = await apiClient.announcements();
+        setFlashNews(annRes.data.flashNews?.content?.trim() || null);
+        setQuoteOfWeek(annRes.data.quoteOfTheWeek?.quote?.trim() || null);
+        const nb = annRes.data.noticeBoard;
+        const notices = nb ? [nb.content1, nb.content2, nb.content3].map((s) => s?.trim()).filter((s): s is string => !!s) : [];
+        setNoticeBoard(notices.length ? notices : null);
+        setTalkToUs(annRes.data.talkToUs?.content?.trim() || null);
+      } catch {
+        setFlashNews(null);
+        setQuoteOfWeek(null);
+        setNoticeBoard(null);
+        setTalkToUs(null);
+      }
     } catch (dashboardError) {
       setError(dashboardError instanceof Error ? dashboardError.message : "Unable to load today's plan");
     } finally {
@@ -200,6 +220,31 @@ export function TodayPanel() {
 
   return (
     <>
+      {(flashNews || quoteOfWeek || noticeBoard || talkToUs) && (
+        <div className="space-y-1.5 mb-2">
+          {flashNews && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 flex items-center gap-1.5">
+              <span className="font-bold uppercase tracking-wide">Flash News</span>
+              <span className="truncate">{flashNews}</span>
+            </div>
+          )}
+          {quoteOfWeek && (
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] italic text-indigo-900">
+              &ldquo;{quoteOfWeek}&rdquo;
+            </div>
+          )}
+          {noticeBoard && noticeBoard.map((n, i) => (
+            <div key={i} className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] text-sky-900">
+              {n}
+            </div>
+          ))}
+          {talkToUs && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
+              <span className="font-bold uppercase tracking-wide mr-1">Talk to Us</span>{talkToUs}
+            </div>
+          )}
+        </div>
+      )}
       {/* Floating Toast Notification */}
       {(confirmMessage || error) && (
         <div className="fixed top-4 inset-x-4 max-w-sm mx-auto z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/95 text-white text-xs font-medium shadow-xl backdrop-blur-md border border-slate-800 animate-toast">
