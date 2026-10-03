@@ -4,6 +4,22 @@ import type { ApiEnvelope, Attendance, DcrExtended, Doctor, FieldDashboard, Mana
 // @zivira/types package, so declared locally here — mirrors the shape
 // returned by serializeDocument() over the backend's Notice model
 // (src/models/notice.model.ts) via GET /field/notices.
+// Round 36 Item A — the real (not fabricated) client/device signal this
+// app can actually observe at submission time: this is a single
+// browser-based field-rep web app (no separate native iOS/Android build,
+// no distinct "Apps"/"E-detailing" submission surface anywhere in this
+// codebase), so the only honest real distinction available is the
+// device's own viewport/user-agent at the moment of submission.
+// "Apps"/"E-detailing" are therefore structurally unreachable from here
+// until such separate flows exist -- not fabricated to look populated.
+function detectSubmissionChannel(): "Desktop" | "Mobile" | "Others" {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return "Others";
+  const ua = navigator.userAgent || "";
+  const isMobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  const isNarrowViewport = window.innerWidth > 0 && window.innerWidth < 820;
+  return (isMobileUa || isNarrowViewport) ? "Mobile" : "Desktop";
+}
+
 export type FieldNotice = {
   id: string;
   title: string;
@@ -184,6 +200,40 @@ export type FieldQuizAttemptHistory = {
   submittedAt: string;
 };
 
+// Round 36 Item 2 -- My Surveys. Mirrors GET /field/surveys (active,
+// in-date-range surveys with real questions resolved + this employee's
+// own already-answered flags) and POST /field/surveys/:id/answers.
+export type FieldSurveyQuestion = {
+  questionId: string;
+  questionText: string;
+  controlType: "Enterable - Text" | "Enterable - Numeric" | "Selectable - Single" | "Selectable- Multiple";
+  maxLength: number | null;
+  options: string[] | null;
+  answered: boolean;
+};
+export type FieldSurveySummary = {
+  id: string;
+  title: string;
+  processFromDate: string;
+  processToDate: string;
+  questionCount: number;
+  answeredCount: number;
+  questions: FieldSurveyQuestion[];
+};
+
+// Round 36 Item C -- My Visit Log (Stockist / Unlisted Doctor / CIP). No
+// capture mechanism existed anywhere in the app for these three before
+// this round.
+export type FieldVisitLog = {
+  id: string;
+  visitType: "Stockist" | "UnlistedDoctor" | "CIP";
+  entityName: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  notes: string | null;
+  visitDateOnly: string;
+};
+
 // Round 19 — Camp entry (campEntry generic master). organizer is always
 // server-forced to the caller's own name; campCode is server-generated.
 export type FieldCampEntry = {
@@ -325,6 +375,8 @@ export type FieldChemistCall = {
   chemistName?: string;
   visitDate: string;
   visitDateOnly?: string;
+  checkInTime?: string | null; // Round 36 Item C
+  checkOutTime?: string | null;
   rcpa: ChemistCallRcpaRow[];
   pob: ChemistCallPobRow[];
   shortExpiry: ChemistCallShortExpiryRow[];
@@ -423,8 +475,12 @@ export const apiClient = {
     prescriptionInterest?: "HIGH"|"MEDIUM"|"LOW"|"NONE";
     productFeedback?: string; competitorMentioned?: string;
     followUpRequired?: boolean; followUpDate?: string;
+    // Round 36 Item A — real client-detected submission channel; callers
+    // don't need to pass this, detectSubmissionChannel() below fills it in.
+    submissionChannel?: "Desktop" | "Mobile" | "Apps" | "E-detailing" | "Others";
   }) {
-    return request<DcrExtended>("/field/dcrs", { method: "POST", body: JSON.stringify(input) }) as Promise<ApiEnvelope<DcrExtended> & { overVisitFlag?: boolean; overVisitCount?: number | null }>;
+    const body = { submissionChannel: detectSubmissionChannel(), ...input };
+    return request<DcrExtended>("/field/dcrs", { method: "POST", body: JSON.stringify(body) }) as Promise<ApiEnvelope<DcrExtended> & { overVisitFlag?: boolean; overVisitCount?: number | null }>;
   },
   checkIn(location: { label: string; latitude: number; longitude: number; accuracy: number }) {
     return request<Attendance>("/field/attendance/check-in", { method: "POST", body: JSON.stringify({ location }) });
@@ -586,6 +642,21 @@ export const apiClient = {
   },
   quizAttempts() { return request<FieldQuizAttemptHistory[]>("/field/quiz-attempts"); },
 
+  // Round 36 Item 2 -- My Surveys
+  surveys() { return request<FieldSurveySummary[]>("/field/surveys"); },
+  submitSurveyAnswers(surveyId: string, answers: { questionId: string; answerText?: string; answerNumeric?: number; selectedOptions?: string[] }[]) {
+    return request<{ savedCount: number }>(`/field/surveys/${surveyId}/answers`, { method: "POST", body: JSON.stringify({ answers }) });
+  },
+
+  // Round 36 Item C -- My Visit Log (Stockist / Unlisted Doctor / CIP)
+  visitLogs(date?: string) {
+    const q = date ? `?date=${encodeURIComponent(date)}` : "";
+    return request<FieldVisitLog[]>(`/field/visit-logs${q}`);
+  },
+  submitVisitLog(input: { visitType: "Stockist" | "UnlistedDoctor" | "CIP"; entityName: string; checkInTime?: string; checkOutTime?: string; notes?: string }) {
+    return request<FieldVisitLog>("/field/visit-logs", { method: "POST", body: JSON.stringify(input) });
+  },
+
   // Round 19 item 2 — Camp entry + Market Survey entry
   camps() { return request<FieldCampEntry[]>("/field/camps"); },
   submitCamp(input: { campName: string; campDate: string; hospital?: string; doctor?: string; noOfPatients?: number; productsDisplayed?: string; remarks?: string }) {
@@ -654,7 +725,7 @@ export const apiClient = {
     return request<FieldChemistCall | null>(`/field/chemist-calls?${params.toString()}`);
   },
   saveChemistCall(input: {
-    chemistId: string; visitDate?: string;
+    chemistId: string; visitDate?: string; checkInTime?: string; checkOutTime?: string;
     rcpa: ChemistCallRcpaRow[]; pob: ChemistCallPobRow[]; shortExpiry: ChemistCallShortExpiryRow[]; jcc: ChemistCallJccRow[];
   }) {
     return request<FieldChemistCall>("/field/chemist-calls", { method: "POST", body: JSON.stringify(input) });

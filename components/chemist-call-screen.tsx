@@ -56,6 +56,10 @@ export function ChemistCallScreen() {
   // Short Expiry
   const [shortExpiryRows, setShortExpiryRows] = useState<ChemistCallShortExpiryRow[]>([]);
 
+  // Round 36 Item C -- real check-in/out capture for Chemist visits.
+  const [checkInTime, setCheckInTime] = useState("");
+  const [checkOutTime, setCheckOutTime] = useState("");
+
   // JCC
   const [colleagues, setColleagues] = useState<FieldJccColleague[]>([]);
   const [jccSelected, setJccSelected] = useState<Record<string, ChemistCallJccRow>>({});
@@ -83,6 +87,8 @@ export function ChemistCallScreen() {
         setColleagues(colleaguesRes.data);
 
         const existing = callRes.data;
+        setCheckInTime(existing?.checkInTime || "");
+        setCheckOutTime(existing?.checkOutTime || "");
         const existingRcpaByBrand = new Map((existing?.rcpa ?? []).map((r) => [r.brandName, r]));
         setRcpaRows(
           brandsRes.data.map((b): RcpaRowState => {
@@ -185,7 +191,7 @@ export function ChemistCallScreen() {
       const shortExpiry = shortExpiryRows.filter((r) => r.qty > 0);
       const jcc = Object.values(jccSelected);
 
-      await apiClient.saveChemistCall({ chemistId, rcpa, pob, shortExpiry, jcc });
+      await apiClient.saveChemistCall({ chemistId, rcpa, pob, shortExpiry, jcc, checkInTime: checkInTime || undefined, checkOutTime: checkOutTime || undefined });
       setSaveMessage("Chemist Call saved.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to save this Chemist Call");
@@ -202,6 +208,18 @@ export function ChemistCallScreen() {
       <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-card">
         <h2 className="text-sm font-black text-slate-900 truncate">{chemist?.dealerName ?? "Chemist"}</h2>
         <p className="text-[11px] text-slate-500">{[chemist?.city, chemist?.patchName].filter(Boolean).join(" · ")}</p>
+        {/* Round 36 Item C -- real check-in/out capture, matching the DCR
+            (doctor visit) precedent that already existed. */}
+        <div className="flex gap-2 mt-2.5">
+          <div className="flex-1 space-y-1">
+            <label className="text-[10px] font-bold text-slate-500">Check-in</label>
+            <input type="time" value={checkInTime} onChange={(e) => setCheckInTime(e.target.value)} className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs" />
+          </div>
+          <div className="flex-1 space-y-1">
+            <label className="text-[10px] font-bold text-slate-500">Check-out</label>
+            <input type="time" value={checkOutTime} onChange={(e) => setCheckOutTime(e.target.value)} className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs" />
+          </div>
+        </div>
       </div>
 
       <div className="flex bg-slate-100/90 rounded-2xl p-1 border border-slate-200/90" role="tablist">

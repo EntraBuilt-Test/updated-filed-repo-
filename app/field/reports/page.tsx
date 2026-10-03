@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckSquare, FileText, HelpCircle, ListChecks, Megaphone, Receipt, Search, Stethoscope, Target, Tent, Wallet } from "lucide-react";
+import { CheckSquare, ClipboardList, FileText, HelpCircle, ListChecks, Megaphone, Receipt, Search, Stethoscope, Target, Tent, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/page-components";
 
 // Round 18 — "Reports" hub: modeled on sanpharma's own Activity Reports /
@@ -25,6 +25,13 @@ const REPORT_LINKS = [
   { title: "My Activity Status", href: "/field/reports/activity", icon: ListChecks, description: "Activities tracked against you and their completion state." },
   { title: "My Tasks", href: "/field/reports/tasks", icon: Stethoscope, description: "Tasks your manager or admin assigned to you." },
   { title: "My Quizzes", href: "/field/reports/quizzes", icon: HelpCircle, description: "Take active quizzes assigned by Admin and view your past scores." },
+  // Round 36 Item 2 -- real survey-answer submission pipeline (see
+  // field.routes.ts /field/surveys, new this round).
+  { title: "My Surveys", href: "/field/reports/surveys", icon: HelpCircle, description: "Answer active surveys assigned by Admin." },
+  // Round 36 Item C -- real minimal visit-log capture for Stockist /
+  // Unlisted Doctor / CIP, which had no capture mechanism anywhere before
+  // this round.
+  { title: "My Visit Log", href: "/field/reports/visit-log", icon: ClipboardList, description: "Log Stockist, Unlisted Doctor and CIP visits with check-in/out times." },
   { title: "My Coverage", href: "/field/reports/coverage", icon: Target, description: "Your doctor coverage and call-average stats by territory type." },
   { title: "My Expenses", href: "/field/tour-plan?tab=expense-claims", icon: Wallet, description: "Your expense claim submissions, amounts and approval status." },
   { title: "Camp Entry", href: "/field/tour-plan?tab=camp", icon: Tent, description: "Log a Camp you organized and view your past camp entries." },
