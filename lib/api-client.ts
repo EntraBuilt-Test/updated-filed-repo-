@@ -614,7 +614,7 @@ export const apiClient = {
 
   // PRD 12.5 follow-up — Expense Claims linked to a Tour Plan's GST branch
   expenseClaims() { return request<ExpenseClaim[]>("/field/expense-claims"); },
-  submitExpenseClaim(input: { tpId: string; category: ExpenseClaimCategory; expenseDate: string; amountRs: number; territoryType?: "HQ" | "EX" | "OS"; description?: string }) {
+  submitExpenseClaim(input: { tpId: string; category: ExpenseClaimCategory; expenseDate: string; amountRs: number; territoryType?: "HQ" | "EX" | "OS"; distanceKms?: number; description?: string }) {
     return request<ExpenseClaim>("/field/expense-claims", { method: "POST", body: JSON.stringify(input) });
   },
   deleteExpenseClaim(claimId: string) { return request<{ deleted: boolean; claimId: string }>(`/field/expense-claims/${claimId}`, { method: "DELETE" }); },

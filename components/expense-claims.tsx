@@ -20,6 +20,7 @@ export function ExpenseClaims() {
   const [category, setCategory] = useState<ExpenseClaimCategory>("Travel");
   const [expenseDate, setExpenseDate] = useState("");
   const [amountRs, setAmountRs] = useState("");
+  const [distanceKms, setDistanceKms] = useState("");
   const [territoryType, setTerritoryType] = useState<"HQ" | "EX" | "OS">("HQ");
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
@@ -70,7 +71,7 @@ export function ExpenseClaims() {
       const amount = Number(amountRs);
       if (!expenseDate) throw new Error("Expense date is required.");
       if (!amount || amount <= 0) throw new Error("Enter a valid amount.");
-      const created = await apiClient.submitExpenseClaim({ tpId, category, expenseDate, amountRs: amount, territoryType, description: description || undefined });
+      const created = await apiClient.submitExpenseClaim({ tpId, category, expenseDate, amountRs: amount, territoryType, distanceKms: territoryType !== "HQ" && distanceKms ? Number(distanceKms) : undefined, description: description || undefined });
       setMessage(`Claim ${created.data.claimId} submitted for approval.`);
       setExpenseDate(""); setAmountRs(""); setDescription("");
       refresh();
@@ -159,6 +160,21 @@ export function ExpenseClaims() {
               <option value="OS">OS (Outstation)</option>
             </select>
           </div>
+
+          {territoryType !== "HQ" && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Distance travelled (kms)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-emerald-700"
+                placeholder="0"
+                value={distanceKms}
+                onChange={(e) => setDistanceKms(e.target.value)}
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Claim Amount (₹)</label>
