@@ -58,6 +58,9 @@ export type FieldSlide = {
   status?: string;
 };
 
+// Round 45 -- one slide presentation to a listed doctor.
+export type FieldSlideView = { id: string; doctorId: string; slideId?: string | null; brandName?: string; productName?: string; startedAt: string; durationSec: number; visitDateOnly: string };
+
 // Phase 4 — the rep's own download-state for a slide (My Activity ->
 // E-Detailing Practice reads this, not the raw slide list).
 export type FieldSlideDownload = {
@@ -530,6 +533,8 @@ export const apiClient = {
     pobAmountRs?: number;
     rxItems?: { productCode?: string; productName: string; qty: number }[];
     visitDate?: string;
+    // Round 45 -- 1-5 stars per brand detailed on this call
+    brandRatings?: { brandName: string; stars: number }[];
     // Round 36 Item A — real client-detected submission channel; callers
     // don't need to pass this, detectSubmissionChannel() below fills it in.
     submissionChannel?: "Desktop" | "Mobile" | "Apps" | "E-detailing" | "Others";
@@ -646,6 +651,14 @@ export const apiClient = {
   // E-Detailing Practice); does not itself fetch the file bytes twice.
   markSlideDownloaded(id: string) {
     return request<FieldSlideDownload>(`/field/slides/${id}/mark-downloaded`, { method: "POST" });
+  },
+  // Round 45 -- "Present slides": log one slide shown to a listed doctor.
+  logSlideView(input: { doctorId: string; slideId?: string; brandName?: string; productName?: string; startedAt?: string; durationSec: number }) {
+    return request<FieldSlideView>("/field/slide-views", { method: "POST", body: JSON.stringify(input) });
+  },
+  slideViews(filter?: { doctorId?: string; date?: string }) {
+    const qs = new URLSearchParams(Object.entries(filter ?? {}).filter(([, v]) => !!v) as [string, string][]).toString();
+    return request<FieldSlideView[]>(`/field/slide-views${qs ? `?${qs}` : ""}`);
   },
   slideDownloads() { return request<FieldSlideDownload[]>("/field/slide-downloads"); },
 

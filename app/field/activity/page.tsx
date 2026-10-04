@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText, Presentation } from "lucide-react";
 import { PageHeader } from "@/components/page-components";
 
 // Phase 4 — new "My Activity" top-level nav destination (the reference
 // app's own My Activity menu group). Only E-Detailing Practice is in
 // scope this round; the hub pattern leaves room for future sub-tabs.
 const ACTIVITY_LINKS = [
-  { title: "E-Detailing Practice", href: "/field/activity/e-detailing-practice", icon: FileText, description: "Slides you've downloaded for offline practice — tap one to open it." }
+  { title: "E-Detailing Practice", href: "/field/activity/e-detailing-practice", icon: FileText, description: "Slides you've downloaded for offline practice — tap one to open it." },
+  { title: "Present Slides", href: "/field/activity/present-slides", icon: Presentation, description: "Show a brand's slides to a listed doctor — the time on screen is logged as an e-detailing call." }
 ];
 
 export default function ActivityHubPage() {

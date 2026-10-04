@@ -5,7 +5,7 @@ import type { Doctor, DoctorExceptionReason, Product, VisitSummaryRow } from "@z
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient, type FieldManager } from "@/lib/api-client";
-import { DcrDateField, PobRxSection, cleanAmount, cleanPobRows, cleanRxRows, emptyRow, type ProductRow } from "@/components/dcr-capture-parts";
+import { BrandStarRatings, brandsOfProducts, DcrDateField, PobRxSection, cleanAmount, cleanPobRows, cleanRxRows, emptyRow, type ProductRow } from "@/components/dcr-capture-parts";
 
 type Sample = { productName: string; productCode: string; qty: number; batchNumber: string; priority: "" | "HIGH" | "MEDIUM" | "LOW" };
 type Input  = { inputName: string; itemType: string; qty: number; valueRs: string };
@@ -46,6 +46,7 @@ export function DcrForm() {
   const [giftItemTypes, setGiftItemTypes]   = useState<string[]>([]);
   const [doctorId, setDoctorId]             = useState("");
   const [productsDetailed, setProductsDetailed] = useState("Zivacard 10");
+  const [brandRatings, setBrandRatings] = useState<Record<string, number>>({});
   const [notes, setNotes]                   = useState("");
   const [callSession, setCallSession]       = useState<"MORNING"|"AFTERNOON"|"EVENING">("MORNING");
   const [callTime, setCallTime]             = useState("");
@@ -288,6 +289,7 @@ export function DcrForm() {
         })),
         jointWork: hasJointWork ? { accompanyingManager: jointManager, jointWorkType: jointType, managerObservations: jointObs } : undefined,
         overrideOverVisitWarning,
+        brandRatings: brandsOfProducts(productsDetailed, products).filter((b) => brandRatings[b] > 0).map((b) => ({ brandName: b, stars: brandRatings[b] })),
         checkInTime: checkInTime || undefined,
         checkOutTime: checkOutTime || undefined,
         gpsLocation: (gpsCoords || gpsLabel) ? { ...(gpsCoords ?? {}), label: gpsLabel || undefined } : undefined,
@@ -315,7 +317,7 @@ export function DcrForm() {
       setHasJointWork(false); setJointManager(""); setJointObs("");
       setCheckInTime(""); setCheckOutTime(""); setHospitalClinic("");
       setGpsLabel(""); setGpsCoords(null); setGpsStatus("");
-      setPromoMaterials([]); setVisualAidUsed(false);
+      setPromoMaterials([]); setVisualAidUsed(false); setBrandRatings({});
       setPrescriptionInterest("HIGH"); setProductFeedback(""); setCompetitorMentioned("");
       setFollowUpRequired(false); setFollowUpDate("");
       apiClient.visitSummary().then(r => setVisitSummary(r.data)).catch(() => {});
@@ -646,6 +648,8 @@ export function DcrForm() {
               className="w-full text-xs rounded-xl border-slate-200 p-2.5 focus:ring-1 focus:ring-brand-600 focus:border-brand-600 font-medium text-slate-800 bg-slate-50/50"
             />
           </div>
+
+          <BrandStarRatings brands={brandsOfProducts(productsDetailed, products)} ratings={brandRatings} onChange={setBrandRatings} />
 
           <div className="space-y-2 pt-1">
             <label className="block text-xs font-bold text-slate-700">Promotional Materials Handed Over</label>

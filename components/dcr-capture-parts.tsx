@@ -131,3 +131,36 @@ export function DcrDateField({ date, setDate, onLockedChange }: { date: string; 
     </div>
   );
 }
+
+// Round 45 -- 1-5 star rating per brand detailed on the call. Brands come from the
+// product master (Product.brandName) for the products named in "Products Presented".
+export function brandsOfProducts(names: string, products: { name: string; brandName?: string | null }[]): string[] {
+  const seen = new Map<string, string>();
+  for (const raw of names.split(",")) {
+    const n = raw.trim().toLowerCase();
+    if (!n) continue;
+    const brand = products.find((p) => p.name.trim().toLowerCase() === n)?.brandName?.trim();
+    if (brand && !seen.has(brand.toLowerCase())) seen.set(brand.toLowerCase(), brand);
+  }
+  return [...seen.values()];
+}
+
+export function BrandStarRatings({ brands, ratings, onChange }: { brands: string[]; ratings: Record<string, number>; onChange: (r: Record<string, number>) => void }) {
+  if (brands.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-bold text-slate-700">Rate the brands you detailed (optional)</label>
+      {brands.map((b) => (
+        <div key={b} className="flex items-center justify-between gap-2 bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2">
+          <span className="text-xs font-semibold text-slate-800 truncate">{b}</span>
+          <span className="flex items-center gap-0.5 shrink-0">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} type="button" aria-label={`${b} ${n} star${n > 1 ? "s" : ""}`} onClick={() => onChange({ ...ratings, [b]: ratings[b] === n ? 0 : n })}
+                className={`text-xl leading-none px-0.5 ${n <= (ratings[b] || 0) ? "text-amber-500" : "text-slate-300"}`}>★</button>
+            ))}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}

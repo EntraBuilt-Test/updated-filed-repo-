@@ -125,6 +125,7 @@ export type Product = {
   code: string;
   category: string;
   division: string;
+  brandName?: string | null;
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
   updatedAt: string;
