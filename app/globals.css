@@ -486,3 +486,10 @@ textarea {
 .expand-transition {
   transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease-in-out;
 }
+
+/* Round 39 item 8 -- reserve the scrollbar gutter so opening a dropdown that
+   extends the page cannot shift the layout sideways; native selects open
+   instantly (no transition). */
+html { overflow-y: scroll; scrollbar-gutter: stable; }
+body { overflow-anchor: none; }
+select { transition: none !important; }

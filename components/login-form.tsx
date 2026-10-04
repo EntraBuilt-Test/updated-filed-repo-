@@ -2,11 +2,12 @@
 
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiClient, setToken } from "@/lib/api-client";
 
 export function LoginForm() {
   const router = useRouter();
+  useEffect(() => { void apiClient.warmUp(); }, []);
   const [username, setUsername] = useState("mr-001");
   const [password, setPassword] = useState("Zivirachennai");
   const [error, setError] = useState("");

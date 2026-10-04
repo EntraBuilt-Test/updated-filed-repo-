@@ -403,13 +403,40 @@ export class ApiError extends Error {
   }
 }
 
+// Round 39 item 1 -- every API call now has a hard timeout and a readable
+// error, so a cold/unreachable backend can never leave a button spinning
+// forever (previously: no timeout at all, and a non-JSON 502 from the
+// host's proxy threw a cryptic "Unexpected token <").
+const REQUEST_TIMEOUT_MS = 30000;
+async function fetchWithTimeout(url: string, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: init.signal ?? controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("The server is taking too long to respond (it may be waking up). Please try again in a moment.");
+    }
+    throw new Error("Cannot reach the server. Check your connection and try again.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+async function readJson(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(`The server returned an unexpected response (${response.status}). It may be restarting -- please retry.`);
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}) {
   const token = getToken();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers }
   });
-  const payload = await response.json();
+  const payload = await readJson(response);
   if (!response.ok) throw new ApiError(payload?.error?.message ?? "API request failed", payload?.error?.details);
   return payload as ApiEnvelope<T>;
 }
@@ -449,6 +476,9 @@ async function fetchBlobUrl(path: string) {
 }
 
 export const apiClient = {
+  // Round 39 item 1 -- fired when a login page opens so a sleeping backend
+  // starts waking while the user types credentials.
+  warmUp() { return fetch(`${API_BASE_URL}/health`, { cache: "no-store" }).catch(() => undefined); },
   login(username: string, password: string) {
     return request<{ token: string }>("/auth/login", { method: "POST", body: JSON.stringify({ username, password, portal: "FIELD_FORCE" }) });
   },
