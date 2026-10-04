@@ -479,7 +479,7 @@ async function fetchBlobUrl(path: string) {
   return URL.createObjectURL(blob);
 }
 
-export type RcpaEntry = { id?: string; _id?: string; doctorId: string; doctorName?: string; chemistName?: string; date: string; ourProduct: string; ourQty: number; competitorProduct?: string; competitorQty?: number };
+export type RcpaEntry = { id?: string; _id?: string; doctorId: string; doctorName?: string; chemistName?: string; date: string; ourProduct: string; ourQty: number; ourPtr?: number | null; competitorName?: string; competitorProduct?: string; competitorQty?: number; competitorPtr?: number | null };
 export type CrmEntry = { id?: string; _id?: string; doctorId: string; doctorName?: string; date: string; type: string; amountRs: number; status: string; notes?: string };
 
 export const apiClient = {
@@ -501,7 +501,7 @@ export const apiClient = {
   dcrLocks() { return request<{ date: string; locked: boolean; reason: string; releasedAt: string | null; releaseRequestedAt: string | null }[]>("/field/dcr-locks"); },
   requestDcrRelease(date: string, note?: string) { return request<{ requested: boolean; date: string }>("/field/dcr-locks/request-release", { method: "POST", body: JSON.stringify({ date, note }) }); },
   rcpaEntries(month?: string) { return request<RcpaEntry[]>(`/field/rcpa${month ? `?month=${month}` : ""}`); },
-  addRcpa(input: { doctorId: string; chemistId?: string; date?: string; ourProduct: string; ourQty: number; competitorProduct?: string; competitorQty?: number }) {
+  addRcpa(input: { doctorId: string; chemistId?: string; date?: string; ourProduct: string; ourQty: number; ourPtr?: number; competitorName?: string; competitorProduct?: string; competitorQty?: number; competitorPtr?: number }) {
     return request<RcpaEntry>("/field/rcpa", { method: "POST", body: JSON.stringify(input) });
   },
   deleteRcpa(id: string) { return request<{ deleted: boolean }>(`/field/rcpa/${id}`, { method: "DELETE" }); },
@@ -653,7 +653,7 @@ export const apiClient = {
     return request<FieldSlideDownload>(`/field/slides/${id}/mark-downloaded`, { method: "POST" });
   },
   // Round 45 -- "Present slides": log one slide shown to a listed doctor.
-  logSlideView(input: { doctorId: string; slideId?: string; brandName?: string; productName?: string; startedAt?: string; durationSec: number }) {
+  logSlideView(input: { doctorId?: string; chemistId?: string; slideName?: string; endedAt?: string; slideId?: string; brandName?: string; productName?: string; startedAt?: string; durationSec: number }) {
     return request<FieldSlideView>("/field/slide-views", { method: "POST", body: JSON.stringify(input) });
   },
   slideViews(filter?: { doctorId?: string; date?: string }) {
@@ -783,6 +783,7 @@ export const apiClient = {
 
   // Phase 5 — Chemist Call execution
   chemists() { return request<FieldChemist[]>("/field/chemists"); },
+  geoTagDoctor(doctorId: string, input: { lat: number; lng: number; address?: string }) { return request<{ id: string; geoTagCount: number }>(`/field/doctors/${doctorId}/geo-tag`, { method: "POST", body: JSON.stringify(input) }); },
   rcpaBrands() { return request<FieldRcpaBrand[]>("/field/rcpa-brands"); },
   pobProducts() { return request<FieldPobProduct[]>("/field/products"); },
   shortExpiryProducts() { return request<FieldShortExpiryProduct[]>("/field/short-expiry-products"); },

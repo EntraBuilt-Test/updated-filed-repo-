@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Play, Square } from "lucide-react";
-import { apiClient, type FieldSlide, type FieldSlideView } from "@/lib/api-client";
+import { apiClient, type FieldChemist, type FieldSlide, type FieldSlideView } from "@/lib/api-client";
 import type { Doctor, Product } from "@zivira/types";
 
 // Round 45 -- "Present slides": the rep picks a listed doctor and a brand's
@@ -16,6 +16,10 @@ export function FieldPresentSlides() {
   const [slides, setSlides] = useState<FieldSlide[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [doctorId, setDoctorId] = useState("");
+  // Round 46 -- slides can be presented to a chemist as well as a doctor (SKU wise detailing dump).
+  const [targetType, setTargetType] = useState<"Doctor" | "Chemist">("Doctor");
+  const [chemists, setChemists] = useState<FieldChemist[]>([]);
+  const [chemistId, setChemistId] = useState("");
   const [slideId, setSlideId] = useState("");
   const [productName, setProductName] = useState("");
   const [views, setViews] = useState<FieldSlideView[]>([]);
@@ -30,6 +34,7 @@ export function FieldPresentSlides() {
     apiClient.doctors().then((r) => setDoctors(r.data)).catch(() => setError("Unable to load your doctors"));
     apiClient.slides().then((r) => setSlides(r.data)).catch(() => setError("Unable to load slides"));
     apiClient.products().then((r) => setProducts(r.data)).catch(() => {});
+    apiClient.chemists().then((r) => setChemists(r.data)).catch(() => {});
     return () => { if (timer.current) clearInterval(timer.current); };
   }, []);
   const today = new Date().toISOString().slice(0, 10);
@@ -43,7 +48,7 @@ export function FieldPresentSlides() {
 
   async function start() {
     setError(""); setMessage("");
-    if (!doctorId || !slide) { setError("Choose a doctor and a slide deck first."); return; }
+    if ((targetType === "Doctor" ? !doctorId : !chemistId) || !slide) { setError(`Choose a ${targetType.toLowerCase()} and a slide deck first.`); return; }
     try {
       const url = await apiClient.viewSlideBlobUrl(slide.id);
       window.open(url, "_blank");
@@ -58,9 +63,9 @@ export function FieldPresentSlides() {
     const durationSec = Math.round((Date.now() - startedAt) / 1000);
     setBusy(true); setError("");
     try {
-      await apiClient.logSlideView({ doctorId, slideId: slide.id, brandName: slide.brand || undefined, productName: productName || undefined, startedAt: new Date(startedAt).toISOString(), durationSec });
+      await apiClient.logSlideView({ ...(targetType === "Doctor" ? { doctorId } : { chemistId }), slideName: slide.fileName || undefined, endedAt: new Date().toISOString(), slideId: slide.id, brandName: slide.brand || undefined, productName: productName || undefined, startedAt: new Date(startedAt).toISOString(), durationSec });
       setMessage(`Logged ${fmt(durationSec)} on ${slide.brand || slide.fileName || "slides"}.`);
-      setViews((await apiClient.slideViews({ doctorId, date: today })).data);
+      if (targetType === "Doctor") setViews((await apiClient.slideViews({ doctorId, date: today })).data);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save this presentation"); }
     finally { setBusy(false); setStartedAt(null); setElapsed(0); }
   }
@@ -70,12 +75,26 @@ export function FieldPresentSlides() {
       {error && <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
       {message && <p className="text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">{message}</p>}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-card space-y-3">
-        <label className="block text-xs font-bold text-slate-700">Doctor
-          <select className="mt-1 w-full text-xs rounded-xl border-slate-200 p-2.5 bg-slate-50/50" value={doctorId} disabled={startedAt !== null} onChange={(e) => setDoctorId(e.target.value)}>
-            <option value="">Select a doctor</option>
-            {doctors.map((d) => <option key={d.id} value={d.id}>{d.name} - {d.specialty}</option>)}
-          </select>
-        </label>
+        <div className="flex gap-1.5">
+          {(["Doctor", "Chemist"] as const).map((t) => (
+            <button key={t} type="button" disabled={startedAt !== null} onClick={() => setTargetType(t)} className={`flex-1 py-2 rounded-lg text-xs font-bold ${targetType === t ? "bg-brand-700 text-white" : "bg-slate-100 text-slate-600"}`}>{t}</button>
+          ))}
+        </div>
+        {targetType === "Doctor" ? (
+          <label className="block text-xs font-bold text-slate-700">Doctor
+            <select className="mt-1 w-full text-xs rounded-xl border-slate-200 p-2.5 bg-slate-50/50" value={doctorId} disabled={startedAt !== null} onChange={(e) => setDoctorId(e.target.value)}>
+              <option value="">Select a doctor</option>
+              {doctors.map((d) => <option key={d.id} value={d.id}>{d.name} - {d.specialty}</option>)}
+            </select>
+          </label>
+        ) : (
+          <label className="block text-xs font-bold text-slate-700">Chemist
+            <select className="mt-1 w-full text-xs rounded-xl border-slate-200 p-2.5 bg-slate-50/50" value={chemistId} disabled={startedAt !== null} onChange={(e) => setChemistId(e.target.value)}>
+              <option value="">Select a chemist</option>
+              {chemists.map((c) => <option key={c.id} value={c.id}>{c.dealerName}</option>)}
+            </select>
+          </label>
+        )}
         <label className="block text-xs font-bold text-slate-700">Slide deck
           <select className="mt-1 w-full text-xs rounded-xl border-slate-200 p-2.5 bg-slate-50/50" value={slideId} disabled={startedAt !== null} onChange={(e) => { setSlideId(e.target.value); setProductName(""); }}>
             <option value="">Select a deck</option>
@@ -96,7 +115,7 @@ export function FieldPresentSlides() {
           <button type="button" disabled={busy} onClick={() => void stop()} className="w-full flex items-center justify-center gap-2 bg-red-600 text-white text-xs font-bold rounded-xl py-2.5 disabled:opacity-60"><Square size={14} />Stop and save ({fmt(elapsed)})</button>
         )}
       </div>
-      {doctorId && (
+      {targetType === "Doctor" && doctorId && (
         <div className="space-y-1.5">
           <p className="text-[11px] font-bold text-slate-600 px-1">Shown to this doctor today</p>
           {views.length === 0 && <p className="text-xs text-slate-500 italic px-1">Nothing logged yet.</p>}

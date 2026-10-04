@@ -54,6 +54,9 @@ function RcpaTab({ doctors, products, chemists, setError, setMsg }: TabProps & {
   const [ourQty, setOurQty] = useState("");
   const [compProduct, setCompProduct] = useState("");
   const [compQty, setCompQty] = useState("");
+  const [ourPtr, setOurPtr] = useState("");
+  const [compName, setCompName] = useState("");
+  const [compPtr, setCompPtr] = useState("");
   const [saving, setSaving] = useState(false);
   const load = () => { apiClient.rcpaEntries(today().slice(0, 7)).then((r) => setRows(r.data)).catch(() => setRows([])); };
   useEffect(load, []);
@@ -65,10 +68,13 @@ function RcpaTab({ doctors, products, chemists, setError, setMsg }: TabProps & {
     if (!ourProduct) { setError("Choose our product."); return; }
     if (!Number.isFinite(our) || our < 0) { setError("Our Rx quantity must be 0 or more."); return; }
     if (comp !== undefined && (!Number.isFinite(comp) || comp < 0)) { setError("Competitor quantity must be 0 or more."); return; }
+    const optNum = (v: string) => (v.trim() === "" ? undefined : Number(v));
+    const ptr = optNum(ourPtr), cptr = optNum(compPtr);
+    if ((ptr !== undefined && (!Number.isFinite(ptr) || ptr < 0)) || (cptr !== undefined && (!Number.isFinite(cptr) || cptr < 0))) { setError("PTR must be 0 or more."); return; }
     setSaving(true);
     try {
-      await apiClient.addRcpa({ doctorId, chemistId: chemistId || undefined, date, ourProduct, ourQty: our, competitorProduct: compProduct.trim() || undefined, competitorQty: comp });
-      setOurQty(""); setCompProduct(""); setCompQty(""); setMsg("RCPA entry saved."); load();
+      await apiClient.addRcpa({ doctorId, chemistId: chemistId || undefined, date, ourProduct, ourQty: our, ourPtr: ptr, competitorName: compName.trim() || undefined, competitorProduct: compProduct.trim() || undefined, competitorQty: comp, competitorPtr: cptr });
+      setOurQty(""); setCompProduct(""); setCompQty(""); setOurPtr(""); setCompName(""); setCompPtr(""); setMsg("RCPA entry saved."); load();
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save RCPA"); }
     finally { setSaving(false); }
   }
@@ -82,10 +88,13 @@ function RcpaTab({ doctors, products, chemists, setError, setMsg }: TabProps & {
           <select className={INPUT} value={ourProduct} onChange={(e) => setOurProduct(e.target.value)}><option value="">Our product…</option>{products.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}</select>
           <input className={INPUT} inputMode="decimal" placeholder="Our Rx qty" value={ourQty} onChange={(e) => setOurQty(e.target.value)} />
         </div>
+        <input className={INPUT} inputMode="decimal" placeholder="Our PTR (Rs, optional - master value used if blank)" value={ourPtr} onChange={(e) => setOurPtr(e.target.value)} />
+        <input className={INPUT} placeholder="Competitor company (optional)" value={compName} onChange={(e) => setCompName(e.target.value)} />
         <div className="grid grid-cols-[2fr_1fr] gap-2">
           <input className={INPUT} placeholder="Competitor product" value={compProduct} onChange={(e) => setCompProduct(e.target.value)} />
           <input className={INPUT} inputMode="decimal" placeholder="Their Rx qty" value={compQty} onChange={(e) => setCompQty(e.target.value)} />
         </div>
+        <input className={INPUT} inputMode="decimal" placeholder="Competitor PTR (Rs, optional)" value={compPtr} onChange={(e) => setCompPtr(e.target.value)} />
         <button type="button" className={BTN} disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save RCPA"}</button>
       </div>
       <div className={CARD}>

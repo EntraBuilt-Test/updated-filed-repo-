@@ -36,6 +36,22 @@ export function DoctorList({ reloadSignal }: { reloadSignal?: number } = {}) {
     void loadDoctors();
   }, [reloadSignal]);
 
+  // Round 46 -- capture the doctor's clinic location from the device (feeds the Listeddr dump's geo-tag columns).
+  function tagLocation(doctorId: string) {
+    if (typeof navigator === "undefined" || !navigator.geolocation) { showToast("Location is not available on this device"); return; }
+    showToast("Getting your location...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const r = await apiClient.geoTagDoctor(doctorId, { lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) });
+          showToast(`Location tagged (${r.data.geoTagCount} on file)`);
+        } catch (e) { showToast(e instanceof Error ? e.message : "Unable to save the location"); }
+      },
+      () => showToast("Location permission denied or unavailable"),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }
+
   const filteredDoctors = doctors.filter((doctor) => {
     const query = search.trim().toLowerCase();
     const matchesSearch =
@@ -236,6 +252,13 @@ export function DoctorList({ reloadSignal }: { reloadSignal?: number } = {}) {
                     onClick={() => showToast("No phone number on file to message this doctor on WhatsApp")}
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"></path></svg>
+                  </button>
+                  <button
+                    className="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-colors"
+                    title="Tag this doctor's clinic location"
+                    onClick={() => tagLocation(doctor.id)}
+                  >
+                    Geo-tag
                   </button>
                 </div>
                 <button
