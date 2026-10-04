@@ -20,6 +20,7 @@ export function ExpenseClaims() {
   const [category, setCategory] = useState<ExpenseClaimCategory>("Travel");
   const [expenseDate, setExpenseDate] = useState("");
   const [amountRs, setAmountRs] = useState("");
+  const [territoryType, setTerritoryType] = useState<"HQ" | "EX" | "OS">("HQ");
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -69,7 +70,7 @@ export function ExpenseClaims() {
       const amount = Number(amountRs);
       if (!expenseDate) throw new Error("Expense date is required.");
       if (!amount || amount <= 0) throw new Error("Enter a valid amount.");
-      const created = await apiClient.submitExpenseClaim({ tpId, category, expenseDate, amountRs: amount, description: description || undefined });
+      const created = await apiClient.submitExpenseClaim({ tpId, category, expenseDate, amountRs: amount, territoryType, description: description || undefined });
       setMessage(`Claim ${created.data.claimId} submitted for approval.`);
       setExpenseDate(""); setAmountRs(""); setDescription("");
       refresh();
@@ -144,6 +145,19 @@ export function ExpenseClaims() {
                 required
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Territory</label>
+            <select
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-700"
+              value={territoryType}
+              onChange={(e) => setTerritoryType(e.target.value as "HQ" | "EX" | "OS")}
+            >
+              <option value="HQ">HQ (Headquarters)</option>
+              <option value="EX">EX (Ex-station)</option>
+              <option value="OS">OS (Outstation)</option>
+            </select>
           </div>
 
           <div>

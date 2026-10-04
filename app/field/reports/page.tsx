@@ -31,7 +31,8 @@ const REPORT_LINKS = [
   // Round 36 Item C -- real minimal visit-log capture for Stockist /
   // Unlisted Doctor / CIP, which had no capture mechanism anywhere before
   // this round.
-  { title: "My Visit Log", href: "/field/reports/visit-log", icon: ClipboardList, description: "Log Stockist, Unlisted Doctor and CIP visits with check-in/out times." },
+  { title: "My Visit Log", href: "/field/reports/visit-log", icon: ClipboardList, description: "Log Stockist, Unlisted Doctor, CIP and Hospital visits with check-in/out times." },
+  { title: "RCPA, CRM and Chemists", href: "/field/reports/rcpa-crm", icon: ClipboardList, description: "Record RCPA, CRM given to doctors and supportive chemists." },
   { title: "My Coverage", href: "/field/reports/coverage", icon: Target, description: "Your doctor coverage and call-average stats by territory type." },
   { title: "My Expenses", href: "/field/tour-plan?tab=expense-claims", icon: Wallet, description: "Your expense claim submissions, amounts and approval status." },
   { title: "Camp Entry", href: "/field/tour-plan?tab=camp", icon: Tent, description: "Log a Camp you organized and view your past camp entries." },

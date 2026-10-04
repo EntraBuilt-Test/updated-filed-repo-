@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { Building2, MapPin, Plus, RefreshCw, Store } from "lucide-react";
 import { apiClient, type FieldVisitLog } from "@/lib/api-client";
 
-const VISIT_TYPES: { key: "Stockist" | "UnlistedDoctor" | "CIP"; label: string; icon: typeof Store }[] = [
+type VisitKind = "Stockist" | "UnlistedDoctor" | "CIP" | "Hospital";
+const VISIT_TYPES: { key: VisitKind; label: string; icon: typeof Store }[] = [
   { key: "Stockist", label: "Stockist", icon: Store },
   { key: "UnlistedDoctor", label: "Unlisted Doctor", icon: Building2 },
-  { key: "CIP", label: "CIP", icon: MapPin }
+  { key: "CIP", label: "CIP", icon: MapPin },
+  { key: "Hospital", label: "Hospital", icon: Building2 }
 ];
 
 // Round 36 Item C — "My Visit Log". Before this round there was genuinely
@@ -21,7 +23,7 @@ export function FieldVisitLogScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
-  const [visitType, setVisitType] = useState<"Stockist" | "UnlistedDoctor" | "CIP">("Stockist");
+  const [visitType, setVisitType] = useState<VisitKind>("Stockist");
   const [entityName, setEntityName] = useState("");
   const [checkInTime, setCheckInTime] = useState("");
   const [checkOutTime, setCheckOutTime] = useState("");

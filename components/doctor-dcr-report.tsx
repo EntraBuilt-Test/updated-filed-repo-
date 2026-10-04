@@ -32,6 +32,15 @@ function formatDate(iso: string) {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// Round 41 -- entered POB (per product qty/value, overall amount) and Rx qty.
+function pobRxSummary(v: DcrExtended): string {
+  const parts: string[] = [];
+  for (const p of v.pob ?? []) parts.push(`POB ${p.productName} x${p.qty}${p.valueRs ? ` (Rs ${p.valueRs})` : ""}`);
+  if (v.pobAmountRs) parts.push(`POB Rs ${v.pobAmountRs}`);
+  for (const r of v.rxItems ?? []) parts.push(`Rx ${r.productName} x${r.qty}`);
+  return parts.join("; ");
+}
+
 // Same colour mapping as the DCR form's doctor dropdown badge.
 function monthlyBadgeClass(badge: "GREEN" | "YELLOW" | "RED" | undefined) {
   if (badge === "RED") return "badge badge-danger";
@@ -142,7 +151,7 @@ export function DoctorDcrReport() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                     <thead>
                       <tr>
-                        {["Date", "Status", "Products", "Notes", "Delete"].map((heading) => (
+                        {["Date", "Status", "Products", "POB / Rx", "Notes", "Delete"].map((heading) => (
                           <th
                             key={heading}
                             style={{
@@ -172,6 +181,9 @@ export function DoctorDcrReport() {
                           </td>
                           <td style={{ padding: "8px", borderBottom: "1px solid var(--line)", wordBreak: "break-word" }}>
                             {visit.productsDetailed?.length ? visit.productsDetailed.join(", ") : <span className="muted">—</span>}
+                          </td>
+                          <td style={{ padding: "8px", borderBottom: "1px solid var(--line)", wordBreak: "break-word" }}>
+                            {pobRxSummary(visit) || <span className="muted">—</span>}
                           </td>
                           <td style={{ padding: "8px", borderBottom: "1px solid var(--line)", wordBreak: "break-word" }}>
                             {visit.notes ? visit.notes : <span className="muted">—</span>}

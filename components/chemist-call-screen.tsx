@@ -52,6 +52,9 @@ export function ChemistCallScreen() {
   const [pobProducts, setPobProducts] = useState<FieldPobProduct[]>([]);
   const [pobQty, setPobQty] = useState<Record<string, number>>({});
   const [pobSearch, setPobSearch] = useState("");
+  // Round 41 -- POB value (Rs) per product and an overall POB amount.
+  const [pobValue, setPobValue] = useState<Record<string, string>>({});
+  const [pobAmount, setPobAmount] = useState("");
 
   // Short Expiry
   const [shortExpiryRows, setShortExpiryRows] = useState<ChemistCallShortExpiryRow[]>([]);
@@ -99,6 +102,8 @@ export function ChemistCallScreen() {
 
         const existingPobByProduct = new Map((existing?.pob ?? []).map((r) => [r.productId, r.qty]));
         setPobQty(Object.fromEntries(productsRes.data.map((p) => [p.id, existingPobByProduct.get(p.id) ?? 0])));
+        setPobValue(Object.fromEntries((existing?.pob ?? []).filter((r) => r.valueRs != null).map((r) => [r.productId, String(r.valueRs)])));
+        setPobAmount(existing?.pobAmountRs != null ? String(existing.pobAmountRs) : "");
 
         const existingExpiryByName = new Map((existing?.shortExpiry ?? []).map((r) => [r.medicineName, r]));
         setShortExpiryRows(
@@ -186,12 +191,20 @@ export function ChemistCallScreen() {
     try {
       const rcpa = rcpaRows.filter((r) => r.myQty > 0 || r.compQty != null);
       const pob: ChemistCallPobRow[] = pobProducts
-        .map((p) => ({ productId: p.id, productName: pobLabel(p) || p.id, qty: pobQty[p.id] ?? 0 }))
-        .filter((r) => r.qty > 0);
+        .map((p) => {
+          const raw = (pobValue[p.id] ?? "").trim();
+          const val = raw === "" ? undefined : Number(raw);
+          if (val !== undefined && (!Number.isFinite(val) || val < 0)) throw new Error("POB value must be a number of 0 or more.");
+          return { productId: p.id, productName: pobLabel(p) || p.id, qty: pobQty[p.id] ?? 0, ...(val !== undefined ? { valueRs: val } : {}) };
+        })
+        .filter((r) => r.qty > 0 || (r.valueRs ?? 0) > 0);
+      const amountRaw = pobAmount.trim();
+      const pobAmountRs = amountRaw === "" ? undefined : Number(amountRaw);
+      if (pobAmountRs !== undefined && (!Number.isFinite(pobAmountRs) || pobAmountRs < 0)) throw new Error("POB amount must be a number of 0 or more.");
       const shortExpiry = shortExpiryRows.filter((r) => r.qty > 0);
       const jcc = Object.values(jccSelected);
 
-      await apiClient.saveChemistCall({ chemistId, rcpa, pob, shortExpiry, jcc, checkInTime: checkInTime || undefined, checkOutTime: checkOutTime || undefined });
+      await apiClient.saveChemistCall({ chemistId, rcpa, pob, pobAmountRs, shortExpiry, jcc, checkInTime: checkInTime || undefined, checkOutTime: checkOutTime || undefined });
       setSaveMessage("Chemist Call saved.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to save this Chemist Call");
@@ -287,9 +300,19 @@ export function ChemistCallScreen() {
                   onChange={(e) => setPobQty((prev) => ({ ...prev, [p.id]: Number(e.target.value) || 0 }))}
                   className="w-20 text-xs border border-slate-300 rounded-lg px-2 py-1.5 text-right"
                 />
+                <input
+                  inputMode="decimal" placeholder="Rs"
+                  value={pobValue[p.id] ?? ""}
+                  onChange={(e) => setPobValue((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                  className="w-20 text-xs border border-slate-300 rounded-lg px-2 py-1.5 text-right"
+                />
               </div>
             ))}
             {filteredPobProducts.length === 0 && <p className="text-sm text-slate-500 italic px-3 py-4">No products found.</p>}
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-card px-3 py-2.5 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-800">Total POB amount (Rs) - optional</span>
+            <input inputMode="decimal" value={pobAmount} onChange={(e) => setPobAmount(e.target.value)} className="w-28 text-xs border border-slate-300 rounded-lg px-2 py-1.5 text-right" />
           </div>
         </section>
       )}

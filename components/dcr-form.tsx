@@ -5,6 +5,7 @@ import type { Doctor, DoctorExceptionReason, Product, VisitSummaryRow } from "@z
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient, type FieldManager } from "@/lib/api-client";
+import { DcrDateField, PobRxSection, cleanAmount, cleanPobRows, cleanRxRows, emptyRow, type ProductRow } from "@/components/dcr-capture-parts";
 
 type Sample = { productName: string; productCode: string; qty: number; batchNumber: string; priority: "" | "HIGH" | "MEDIUM" | "LOW" };
 type Input  = { inputName: string; itemType: string; qty: number; valueRs: string };
@@ -48,6 +49,12 @@ export function DcrForm() {
   const [notes, setNotes]                   = useState("");
   const [callSession, setCallSession]       = useState<"MORNING"|"AFTERNOON"|"EVENING">("MORNING");
   const [callTime, setCallTime]             = useState("");
+  // Round 41 -- DCR date (lock-aware) and real POB / Rx capture.
+  const [dcrDate, setDcrDate]               = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateLocked, setDateLocked]         = useState(false);
+  const [pobRows, setPobRows]               = useState<ProductRow[]>([emptyRow()]);
+  const [rxRows, setRxRows]                 = useState<ProductRow[]>([emptyRow()]);
+  const [pobAmount, setPobAmount]           = useState("");
   const [samplesGiven, setSamplesGiven]     = useState<Sample[]>([{ productName: "", productCode: "", qty: 1, batchNumber: "", priority: "" }]);
   const [inputsGiven, setInputsGiven]       = useState<Input[]>([{ inputName: "", itemType: "", qty: 1, valueRs: "" }]);
   const [hasJointWork, setHasJointWork]     = useState(false);
@@ -255,14 +262,23 @@ export function DcrForm() {
   }
 
   async function doSubmit(overrideOverVisitWarning: boolean) {
-    setSubmitting(true); setError(""); setMessage("");
+    setError(""); setMessage("");
+    if (dateLocked) { setError("This DCR date is locked. Request a release first."); return; }
+    let pob, rxItems, pobAmountRs;
     try {
+      pob = cleanPobRows(pobRows); rxItems = cleanRxRows(rxRows); pobAmountRs = cleanAmount(pobAmount);
+    } catch (e) { setError(e instanceof Error ? e.message : "Check the POB / Rx entries"); return; }
+    setSubmitting(true);
+    try {
+      const nowHm = new Date().toTimeString().slice(0, 5);
       const result = await apiClient.submitDcr({
+        pob, rxItems, pobAmountRs,
+        visitDate: dcrDate !== new Date().toISOString().slice(0, 10) ? dcrDate : undefined,
         doctorId: doctorId || undefined,
         productsDetailed: productsDetailed.split(",").map(s => s.trim()).filter(Boolean),
         notes,
         callSession,
-        callTime: callTime || undefined,
+        callTime: callTime || nowHm,
         samplesGiven: samplesGiven.filter(s => s.productCode).map(s => ({
           productName: s.productName, productCode: s.productCode, qty: Number(s.qty) || 0, batchNumber: s.batchNumber || undefined,
           priority: s.priority || undefined
@@ -293,6 +309,7 @@ export function DcrForm() {
       // before the page navigates away.
       setTimeout(() => router.push("/field/doctors?tab=dcr-report"), 1200);
       setNotes("");
+      setPobRows([emptyRow()]); setRxRows([emptyRow()]); setPobAmount("");
       setSamplesGiven([{ productName: "", productCode: "", qty: 1, batchNumber: "", priority: "" }]);
       setInputsGiven([{ inputName: "", itemType: "", qty: 1, valueRs: "" }]);
       setHasJointWork(false); setJointManager(""); setJointObs("");
@@ -566,6 +583,8 @@ export function DcrForm() {
             </button>
           </div>
           
+          <DcrDateField date={dcrDate} setDate={setDcrDate} onLockedChange={setDateLocked} />
+
           <div className="grid grid-cols-2 gap-2.5 pt-1">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">Call Session</label>
@@ -888,6 +907,8 @@ export function DcrForm() {
           </div>
         </section>
 
+        <PobRxSection products={products} pobRows={pobRows} setPobRows={setPobRows} rxRows={rxRows} setRxRows={setRxRows} pobAmount={pobAmount} setPobAmount={setPobAmount} />
+
         {message && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs font-medium">
             {message}
@@ -903,7 +924,7 @@ export function DcrForm() {
         <div className="pt-2 space-y-2.5 pb-8">
           <button 
             type="submit" 
-            disabled={submitting}
+            disabled={submitting || dateLocked}
             className="w-full bg-gradient-to-r from-brand-600 via-brand-700 to-emerald-800 hover:from-brand-700 hover:to-brand-900 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-btn-emerald flex items-center justify-center space-x-2.5 transition active:scale-[0.98] disabled:opacity-70"
           >
             <span className="text-sm tracking-wide">{submitting ? "Submitting…" : "Submit Daily Call Report"}</span>

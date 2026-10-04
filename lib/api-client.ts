@@ -226,7 +226,7 @@ export type FieldSurveySummary = {
 // this round.
 export type FieldVisitLog = {
   id: string;
-  visitType: "Stockist" | "UnlistedDoctor" | "CIP";
+  visitType: "Stockist" | "UnlistedDoctor" | "CIP" | "Hospital";
   entityName: string;
   checkInTime: string | null;
   checkOutTime: string | null;
@@ -365,7 +365,7 @@ export type FieldJccColleague = {
 };
 
 export type ChemistCallRcpaRow = { brandId?: string | null; brandName: string; myQty: number; compBrandName?: string | null; compQty?: number | null };
-export type ChemistCallPobRow = { productId: string; productName: string; qty: number };
+export type ChemistCallPobRow = { productId: string; productName: string; qty: number; valueRs?: number | null };
 export type ChemistCallShortExpiryRow = { medicineName: string; expiryDate?: string | null; qty: number };
 export type ChemistCallJccRow = { employeeCode?: string | null; name: string; designation?: string };
 
@@ -379,6 +379,7 @@ export type FieldChemistCall = {
   checkOutTime?: string | null;
   rcpa: ChemistCallRcpaRow[];
   pob: ChemistCallPobRow[];
+  pobAmountRs?: number | null;
   shortExpiry: ChemistCallShortExpiryRow[];
   jcc: ChemistCallJccRow[];
   status?: string;
@@ -475,6 +476,9 @@ async function fetchBlobUrl(path: string) {
   return URL.createObjectURL(blob);
 }
 
+export type RcpaEntry = { id?: string; _id?: string; doctorId: string; doctorName?: string; chemistName?: string; date: string; ourProduct: string; ourQty: number; competitorProduct?: string; competitorQty?: number };
+export type CrmEntry = { id?: string; _id?: string; doctorId: string; doctorName?: string; date: string; type: string; amountRs: number; status: string; notes?: string };
+
 export const apiClient = {
   // Round 39 item 1 -- fired when a login page opens so a sleeping backend
   // starts waking while the user types credentials.
@@ -490,6 +494,22 @@ export const apiClient = {
   // logged against them. Other callers (dashboard "recent activity" etc.)
   // can still pass a smaller limit.
   dcrs(limit?: number) { return request<DcrExtended[]>(`/field/dcrs${limit ? `?limit=${limit}` : "?limit=500"}`); },
+  // ── Round 41 -- DCR locks, RCPA, CRM, supportive chemists ──────────────
+  dcrLocks() { return request<{ date: string; locked: boolean; reason: string; releasedAt: string | null; releaseRequestedAt: string | null }[]>("/field/dcr-locks"); },
+  requestDcrRelease(date: string, note?: string) { return request<{ requested: boolean; date: string }>("/field/dcr-locks/request-release", { method: "POST", body: JSON.stringify({ date, note }) }); },
+  rcpaEntries(month?: string) { return request<RcpaEntry[]>(`/field/rcpa${month ? `?month=${month}` : ""}`); },
+  addRcpa(input: { doctorId: string; chemistId?: string; date?: string; ourProduct: string; ourQty: number; competitorProduct?: string; competitorQty?: number }) {
+    return request<RcpaEntry>("/field/rcpa", { method: "POST", body: JSON.stringify(input) });
+  },
+  deleteRcpa(id: string) { return request<{ deleted: boolean }>(`/field/rcpa/${id}`, { method: "DELETE" }); },
+  crmEntries(month?: string) { return request<CrmEntry[]>(`/field/crm${month ? `?month=${month}` : ""}`); },
+  addCrm(input: { doctorId: string; date?: string; type: string; amountRs: number; notes?: string }) {
+    return request<CrmEntry>("/field/crm", { method: "POST", body: JSON.stringify(input) });
+  },
+  deleteCrm(id: string) { return request<{ deleted: boolean }>(`/field/crm/${id}`, { method: "DELETE" }); },
+  setSupportiveChemists(doctorId: string, dealerIds: string[]) {
+    return request<{ id: string }>(`/field/doctors/${doctorId}/supportive-chemists`, { method: "PUT", body: JSON.stringify({ dealerIds }) });
+  },
   deleteDcr(id: string) { return request<{ deleted: boolean; id: string }>(`/field/dcrs/${id}`, { method: "DELETE" }); },
   submitDcr(input: {
     doctorId?: string; productsDetailed: string[]; notes?: string;
@@ -505,6 +525,11 @@ export const apiClient = {
     prescriptionInterest?: "HIGH"|"MEDIUM"|"LOW"|"NONE";
     productFeedback?: string; competitorMentioned?: string;
     followUpRequired?: boolean; followUpDate?: string;
+    // Round 41 -- real POB / Rx capture and back-dated DCR date
+    pob?: { productCode?: string; productName: string; qty: number; valueRs?: number }[];
+    pobAmountRs?: number;
+    rxItems?: { productCode?: string; productName: string; qty: number }[];
+    visitDate?: string;
     // Round 36 Item A — real client-detected submission channel; callers
     // don't need to pass this, detectSubmissionChannel() below fills it in.
     submissionChannel?: "Desktop" | "Mobile" | "Apps" | "E-detailing" | "Others";
@@ -584,7 +609,7 @@ export const apiClient = {
 
   // PRD 12.5 follow-up — Expense Claims linked to a Tour Plan's GST branch
   expenseClaims() { return request<ExpenseClaim[]>("/field/expense-claims"); },
-  submitExpenseClaim(input: { tpId: string; category: ExpenseClaimCategory; expenseDate: string; amountRs: number; description?: string }) {
+  submitExpenseClaim(input: { tpId: string; category: ExpenseClaimCategory; expenseDate: string; amountRs: number; territoryType?: "HQ" | "EX" | "OS"; description?: string }) {
     return request<ExpenseClaim>("/field/expense-claims", { method: "POST", body: JSON.stringify(input) });
   },
   deleteExpenseClaim(claimId: string) { return request<{ deleted: boolean; claimId: string }>(`/field/expense-claims/${claimId}`, { method: "DELETE" }); },
@@ -683,7 +708,7 @@ export const apiClient = {
     const q = date ? `?date=${encodeURIComponent(date)}` : "";
     return request<FieldVisitLog[]>(`/field/visit-logs${q}`);
   },
-  submitVisitLog(input: { visitType: "Stockist" | "UnlistedDoctor" | "CIP"; entityName: string; checkInTime?: string; checkOutTime?: string; notes?: string }) {
+  submitVisitLog(input: { visitType: "Stockist" | "UnlistedDoctor" | "CIP" | "Hospital"; entityName: string; checkInTime?: string; checkOutTime?: string; notes?: string }) {
     return request<FieldVisitLog>("/field/visit-logs", { method: "POST", body: JSON.stringify(input) });
   },
 
@@ -756,7 +781,7 @@ export const apiClient = {
   },
   saveChemistCall(input: {
     chemistId: string; visitDate?: string; checkInTime?: string; checkOutTime?: string;
-    rcpa: ChemistCallRcpaRow[]; pob: ChemistCallPobRow[]; shortExpiry: ChemistCallShortExpiryRow[]; jcc: ChemistCallJccRow[];
+    rcpa: ChemistCallRcpaRow[]; pob: ChemistCallPobRow[]; pobAmountRs?: number; shortExpiry: ChemistCallShortExpiryRow[]; jcc: ChemistCallJccRow[];
   }) {
     return request<FieldChemistCall>("/field/chemist-calls", { method: "POST", body: JSON.stringify(input) });
   }
