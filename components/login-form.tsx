@@ -21,6 +21,8 @@ export function LoginForm() {
     try {
       const response = await apiClient.login(username, password);
       setToken(response.data.token);
+      // Round 48 Part C -- warm the lists the first screens need.
+      void apiClient.doctors().catch(() => undefined); void apiClient.products().catch(() => undefined);
       router.push("/field/today");
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Unable to sign in");
