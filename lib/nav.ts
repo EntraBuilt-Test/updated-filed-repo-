@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, LayoutGrid, MapPinned, Megaphone, PlaySquare, Stethoscope, UserCheck, UserCircle } from "lucide-react";
+import { CalendarDays, CalendarOff, ClipboardPlus, FileBarChart, LayoutGrid, MessageCircle, MapPinned, Megaphone, PlaySquare, Stethoscope, UserCheck, UserCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type FieldNavItem = {
@@ -47,5 +47,6 @@ export const fieldNav: FieldNavItem[] = [
   // it horizontally instead.
   { title: "Master", href: "/field/master", icon: LayoutGrid },
   { title: "Activity", href: "/field/activity", icon: PlaySquare },
+  { title: "Talk", href: "/field/talk-to-us", icon: MessageCircle },
   { title: "Profile", href: "/field/profile", icon: UserCircle }
 ];

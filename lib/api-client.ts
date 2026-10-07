@@ -400,6 +400,8 @@ export function clearToken() { window.localStorage.removeItem(TOKEN_KEY); }
 // Carries the backend's optional structured error payload (e.g. the tpId of
 // a conflicting Tour Plan) so callers can offer a real next action instead
 // of just displaying the message text.
+import type { InfoFeed } from "@/components/info-popups";
+import type { TalkTicket } from "@/components/talk-to-us";
 export class ApiError extends Error {
   details?: Record<string, unknown>;
   constructor(message: string, details?: Record<string, unknown>) {
@@ -495,6 +497,11 @@ export const apiClient = {
   login(username: string, password: string) {
     return request<{ token: string }>("/auth/login", { method: "POST", body: JSON.stringify({ username, password, portal: "FIELD_FORCE" }) });
   },
+  // Round 48 Part D
+  infoFeed() { return request<InfoFeed>("/field/info-center/feed"); },
+  talkList() { return request<TalkTicket[]>("/field/info-center/talk"); },
+  talkCreate(subject: string, message: string) { return request<TalkTicket>("/field/info-center/talk", { method: "POST", body: JSON.stringify({ subject, message }) }); },
+  talkReply(id: string, message: string) { return request<TalkTicket>(`/field/info-center/talk/${id}/reply`, { method: "POST", body: JSON.stringify({ message }) }); },
   dashboard()  { return request<FieldDashboard>("/field/dashboard"); },
   doctors()    { return request<Doctor[]>("/field/doctors"); },
   managers()   { return request<FieldManager[]>("/field/managers"); },

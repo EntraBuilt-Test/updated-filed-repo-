@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { fieldNav } from "@/lib/nav";
 import { apiClient, clearToken } from "@/lib/api-client";
 import { fetchCurrentLocation, readSavedLocation, type FieldLocation } from "@/lib/location";
+import { InfoAnnouncements } from "@/components/info-popups";
 import { CheckoutGuard } from "@/components/checkout-guard";
 
 // Round 19 item 3 — bell + unread badge, polled the same way the
@@ -15,6 +16,8 @@ import { CheckoutGuard } from "@/components/checkout-guard";
 // real unread notices from GET /field/notices/unread-count without
 // requiring the rep to already know the /field/notifications URL.
 const NOTICE_POLL_INTERVAL_MS = 20000;
+
+const loadInfoFeed = () => apiClient.infoFeed().then((r) => r.data);
 
 export function FieldShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -118,7 +121,7 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       
-      <main className="flex-1 px-4 pt-4 pb-6 space-y-4"><CheckoutGuard>{children}</CheckoutGuard></main>
+      <main className="flex-1 px-4 pt-4 pb-6 space-y-4"><InfoAnnouncements load={loadInfoFeed} /><CheckoutGuard>{children}</CheckoutGuard></main>
       
       {/* Phase 4 — 11 tabs no longer fit a fixed grid at mobile width
           (grid-cols-9 was already tight at 9); scrolls horizontally
