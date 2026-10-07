@@ -235,6 +235,7 @@ export type FieldVisitLog = {
   checkInTime: string | null;
   checkOutTime: string | null;
   notes: string | null;
+  productsDetailed?: string[];
   visitDateOnly: string;
 };
 
@@ -734,7 +735,7 @@ export const apiClient = {
     const q = date ? `?date=${encodeURIComponent(date)}` : "";
     return request<FieldVisitLog[]>(`/field/visit-logs${q}`);
   },
-  submitVisitLog(input: { visitType: "Stockist" | "UnlistedDoctor" | "CIP" | "Hospital"; entityName: string; checkInTime?: string; checkOutTime?: string; notes?: string }) {
+  submitVisitLog(input: { visitType: "Stockist" | "UnlistedDoctor" | "CIP" | "Hospital"; entityName: string; checkInTime?: string; checkOutTime?: string; notes?: string; productsDetailed?: string[] }) {
     return request<FieldVisitLog>("/field/visit-logs", { method: "POST", body: JSON.stringify(input) });
   },
 

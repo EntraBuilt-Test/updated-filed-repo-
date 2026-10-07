@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Building2, MapPin, Plus, RefreshCw, Store } from "lucide-react";
 import { apiClient, type FieldVisitLog } from "@/lib/api-client";
+import type { Product } from "@zivira/types";
 
 type VisitKind = "Stockist" | "UnlistedDoctor" | "CIP" | "Hospital";
 const VISIT_TYPES: { key: VisitKind; label: string; icon: typeof Store }[] = [
@@ -28,6 +29,9 @@ export function FieldVisitLogScreen() {
   const [checkInTime, setCheckInTime] = useState("");
   const [checkOutTime, setCheckOutTime] = useState("");
   const [notes, setNotes] = useState("");
+  // Round 55: products detailed on an Unlisted Doctor visit (multi-select from the product master).
+  const [products, setProducts] = useState<Product[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -41,6 +45,8 @@ export function FieldVisitLogScreen() {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { apiClient.products().then((r) => setProducts(r.data)).catch(() => setProducts([])); }, []);
+  const toggleProduct = (name: string) => setPicked((p) => (p.includes(name) ? p.filter((x) => x !== name) : [...p, name]));
 
   async function save() {
     if (!entityName.trim()) {
@@ -55,8 +61,10 @@ export function FieldVisitLogScreen() {
         entityName: entityName.trim(),
         checkInTime: checkInTime || undefined,
         checkOutTime: checkOutTime || undefined,
-        notes: notes.trim() || undefined
+        notes: notes.trim() || undefined,
+        productsDetailed: visitType === "UnlistedDoctor" && picked.length ? picked : undefined
       });
+      setPicked([]);
       setEntityName(""); setCheckInTime(""); setCheckOutTime(""); setNotes("");
       setAdding(false);
       load();
@@ -122,6 +130,20 @@ export function FieldVisitLogScreen() {
               <input type="time" value={checkOutTime} onChange={(e) => setCheckOutTime(e.target.value)} className="w-full h-9 px-2.5 rounded-lg border border-slate-200 text-xs" />
             </div>
           </div>
+          {visitType === "UnlistedDoctor" && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500">Products detailed (optional)</label>
+              <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-200 p-1.5 grid grid-cols-2 gap-x-2 gap-y-1">
+                {products.map((p) => (
+                  <label key={p.id} className="flex items-center gap-1.5 text-[11px] text-slate-700">
+                    <input type="checkbox" checked={picked.includes(p.name)} onChange={() => toggleProduct(p.name)} />
+                    <span className="truncate">{p.name}</span>
+                  </label>
+                ))}
+                {products.length === 0 && <span className="text-[11px] text-slate-400 italic">No products available.</span>}
+              </div>
+            </div>
+          )}
           <textarea
             placeholder="Notes (optional)"
             value={notes}
@@ -148,6 +170,7 @@ export function FieldVisitLogScreen() {
           <div key={l.id} className="bg-white rounded-xl border border-slate-200/90 p-2.5 flex items-center justify-between text-[11px]">
             <div className="min-w-0">
               <p className="font-bold text-slate-800 truncate">{l.entityName} <span className="text-slate-400 font-semibold">· {l.visitType}</span></p>
+              {l.productsDetailed && l.productsDetailed.length > 0 && <p className="text-slate-500 truncate">Products: {l.productsDetailed.join(", ")}</p>}
               {(l.checkInTime || l.checkOutTime) && (
                 <p className="text-slate-400">{l.checkInTime || "--:--"} to {l.checkOutTime || "--:--"}</p>
               )}
