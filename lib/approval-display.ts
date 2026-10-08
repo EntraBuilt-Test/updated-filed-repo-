@@ -6,10 +6,18 @@ const DECIDED = ["MANAGER_APPROVED", "APPROVED", "REJECTED", "CANCELLED"];
 
 export function decidedText(rec: any, fallback: string): string {
   if (!rec || !DECIDED.includes(String(rec.status ?? "").toUpperCase())) return fallback;
-  const label = approvalLabel(rec);
-  const d = approvalDate(rec);
+  // the server builds statusLabel / statusDate from the stored approval trail (Round 60); fall back to computing it here for older responses
+  const label = typeof rec.statusLabel === "string" && rec.statusLabel ? rec.statusLabel : approvalLabel(rec);
+  const d = rec.statusDate ?? approvalDate(rec);
   const when = d ? new Date(d) : null;
   return when && !Number.isNaN(when.getTime()) ? `${label} · ${when.toLocaleDateString("en-IN")}` : label;
+}
+
+/** The reason / remarks that came with the decision (rejection reason, cancellation reason, approver remarks), or "". */
+export function decisionRemarks(rec: any): string {
+  if (!rec || !DECIDED.includes(String(rec.status ?? "").toUpperCase())) return "";
+  const r = rec.statusRemarks ?? rec.approval?.remarks ?? rec.cancelReason ?? rec.rejectReason ?? "";
+  return String(r).trim();
 }
 
 export function historyLines(rec: any): string[] {

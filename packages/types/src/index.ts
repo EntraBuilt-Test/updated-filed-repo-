@@ -148,6 +148,7 @@ export const LEAVE_REASONS = [
 export type LeaveReason = typeof LEAVE_REASONS[number];
 
 export type LeaveApplication = {
+  statusLabel?: string; statusDate?: string | null; statusRemarks?: string;   // server-built decision text (Round 60)
   id: string;
   tenantSlug: string;
   employeeCode: string;
@@ -174,6 +175,7 @@ export type LeaveApplication = {
 };
 
 export type Dcr = {
+  statusLabel?: string; statusDate?: string | null; statusRemarks?: string;
   id: string;
   tenantSlug: string;
   employeeCode: string;
@@ -334,6 +336,7 @@ export type TourPlanLocation = { date: string; area: string; town: string; purpo
 export type TourPlanStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "VOIDED";
 
 export type TourPlan = {
+  statusLabel?: string; statusDate?: string | null; statusRemarks?: string;
   id: string;
   tenantSlug: string;
   tpId: string;

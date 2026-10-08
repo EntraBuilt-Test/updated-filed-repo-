@@ -501,7 +501,7 @@ export const apiClient = {
     return request<{ token: string }>("/auth/login", { method: "POST", body: JSON.stringify({ username, password, portal: "FIELD_FORCE" }) });
   },
   // Round 48 Part D
-  infoFeed() { return request<InfoFeed>("/field/info-center/feed"); },
+  infoFeed() { return request<InfoFeed>("/field/info-center/feed", { cache: "no-store" }); },
   talkList() { return request<TalkTicket[]>("/field/info-center/talk"); },
   talkCreate(subject: string, message: string) { return request<TalkTicket>("/field/info-center/talk", { method: "POST", body: JSON.stringify({ subject, message }) }); },
   talkReply(id: string, message: string) { return request<TalkTicket>(`/field/info-center/talk/${id}/reply`, { method: "POST", body: JSON.stringify({ message }) }); },

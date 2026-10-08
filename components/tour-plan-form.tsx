@@ -1,6 +1,6 @@
 "use client";
 
-import { decidedText, historyLines } from "@/lib/approval-display";
+import { decidedText, decisionRemarks, historyLines } from "@/lib/approval-display";
 import type { CompanyBranch, TourPlan, TourPlanLocation } from "@zivira/types";
 import { Plus, Send, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -375,6 +375,7 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border ${statusBadgeClass(tp.status)}`}>
                   {decidedText(tp, tp.status)}
                 </span>
+                {decisionRemarks(tp) ? <span className="text-[10px] text-slate-500 font-medium max-w-[160px] truncate" title={decisionRemarks(tp)}>Remarks: {decisionRemarks(tp)}</span> : null}
                 <button
                   type="button"
                   onClick={() => deleteTourPlan(tp.tpId)}

@@ -126,25 +126,40 @@ const SESSION_KEY = "zivira.info.session.v1"; // ids already popped up in this b
 const readJson = (s: Storage, k: string): Record<string, number | true> => { try { return JSON.parse(s.getItem(k) || "{}") || {}; } catch { return {}; } };
 const writeJson = (s: Storage, k: string, v: unknown) => { try { s.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
 
+// The feed is re-read when the tab/app regains focus, when the network comes back and every REFRESH_MS, so an item the admin adds, edits or
+// deletes reaches an open portal without a reload. Popups are remembered per item AND version for the session (an edited item shows again);
+// a refetch only queues items not already shown, and drops queued ones that are gone.
+const REFRESH_MS = 60_000;
 export function InfoAnnouncements({ load }: { load: () => Promise<InfoFeed> }) {
   const [feed, setFeed] = useState<InfoFeed | null>(null);
   const [queue, setQueue] = useState<InfoItem[]>([]);
   useEffect(() => {
     let alive = true;
-    load().then((f) => {
-      if (!alive) return;
-      setFeed(f);
-      const hidden = readJson(localStorage, SEEN_KEY), session = readJson(sessionStorage, SESSION_KEY);
-      const pending = [...f.notices, ...(f.quote ? [f.quote] : [])].filter((i) => hidden[i.id] !== i.version && !session[i.id]);
-      setQueue(pending);
-    }).catch(() => undefined);
-    return () => { alive = false; };
+    const run = () => {
+      load().then((f) => {
+        if (!alive) return;
+        setFeed(f);
+        const hidden = readJson(localStorage, SEEN_KEY), session = readJson(sessionStorage, SESSION_KEY);
+        const fresh = [...f.notices, ...(f.quote ? [f.quote] : [])].filter((i) => hidden[i.id] !== i.version && session[i.id] !== i.version);
+        setQueue((prev) => {
+          const byId = new Map(fresh.map((i) => [i.id, i]));
+          const kept = prev.filter((p) => byId.has(p.id)).map((p) => byId.get(p.id)!);      // still published (latest text)
+          const have = new Set(kept.map((p) => p.id));
+          return [...kept, ...fresh.filter((i) => !have.has(i.id))];
+        });
+      }).catch(() => undefined);
+    };
+    run();
+    const timer = window.setInterval(run, REFRESH_MS);
+    const onVisible = () => { if (document.visibilityState === "visible") run(); };
+    window.addEventListener("focus", run); window.addEventListener("online", run); document.addEventListener("visibilitychange", onVisible);
+    return () => { alive = false; window.clearInterval(timer); window.removeEventListener("focus", run); window.removeEventListener("online", run); document.removeEventListener("visibilitychange", onVisible); };
   }, [load]);
 
   const current = queue[0];
   const close = useCallback(() => {
     if (!current) return;
-    const s = readJson(sessionStorage, SESSION_KEY); s[current.id] = true; writeJson(sessionStorage, SESSION_KEY, s);
+    const s = readJson(sessionStorage, SESSION_KEY); s[current.id] = current.version; writeJson(sessionStorage, SESSION_KEY, s);
     setQueue((q) => q.slice(1));
   }, [current]);
   const never = useCallback(() => {

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { decidedText, historyLines } from "@/lib/approval-display";
+import { decidedText, decisionRemarks, historyLines } from "@/lib/approval-display";
 import type { LeaveApplication, LeaveReason } from "@zivira/types";
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -384,6 +384,7 @@ export function LeaveApply() {
                 <span className={`font-bold ${colorTheme.accent} bg-white px-2 py-0.5 rounded-md border border-slate-200 text-[11px]`}>{app.days} day(s)</span>
               </div>
 
+              {decisionRemarks(app) ? <div className="text-[11px] text-slate-600 font-medium">Remarks: {decisionRemarks(app)}</div> : null}
               <div className="flex items-center justify-between pt-0.5 text-[11px] text-slate-500">
                 {isApproved && (
                   <>

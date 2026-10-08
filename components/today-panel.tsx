@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { decidedText, decisionRemarks } from "@/lib/approval-display";
 import { fetchCurrentLocation, readSavedLocation, type FieldLocation } from "@/lib/location";
 
 const CATEGORY_PRIORITY: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
@@ -520,6 +521,19 @@ export function TodayPanel() {
           </button>
         </div>
       </div>
+
+      {/* Latest decisions on my reports: "Approved by Admin / Approved by Manager (Name) / Rejected by ...", with date and remarks */}
+      {(dashboard?.recentDcrs ?? []).some((d) => decidedText(d, "")) && (
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-sm space-y-1.5">
+          <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-wide">Recent report decisions</h3>
+          {(dashboard?.recentDcrs ?? []).filter((d) => decidedText(d, "")).map((d) => (
+            <div key={d.id} className="text-[11px] text-slate-600 border-t border-slate-100 pt-1.5">
+              <div className="font-semibold text-slate-800">{new Date(d.visitDate).toLocaleDateString("en-IN")} · {decidedText(d, "")}</div>
+              {decisionRemarks(d) ? <div>Remarks: {decisionRemarks(d)}</div> : null}
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* Scheduled Doctor Visits Section */}
       <section className="space-y-3">
