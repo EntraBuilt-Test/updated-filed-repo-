@@ -153,6 +153,23 @@ export function TodayPanel() {
     }
   }
 
+  // keep the Notice Board / Quote cards current without a reload: re-read on focus and every minute
+  useEffect(() => {
+    const refresh = () => {
+      apiClient.announcements().then((annRes) => {
+        setFlashNews(annRes.data.flashNews?.content?.trim() || null);
+        setQuoteOfWeek(annRes.data.quoteOfTheWeek?.quote?.trim() || null);
+        const nb = annRes.data.noticeBoard;
+        const notices = nb ? [nb.content1, nb.content2, nb.content3].map((x) => x?.trim()).filter((x): x is string => !!x) : [];
+        setNoticeBoard(notices.length ? notices : null);
+        setTalkToUs(annRes.data.talkToUs?.content?.trim() || null);
+      }).catch(() => undefined);
+    };
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, []);
+
   useEffect(() => {
     setLocation(readSavedLocation());
     void loadDashboard();
@@ -223,16 +240,18 @@ export function TodayPanel() {
     <>
       {(quoteOfWeek || noticeBoard || talkToUs) && (
         <div className="space-y-1.5 mb-2">
-          {quoteOfWeek && (
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] italic text-indigo-900">
-              &ldquo;{quoteOfWeek}&rdquo;
+          {noticeBoard && (
+            <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] text-sky-900">
+              <div className="font-bold uppercase tracking-wide text-[10px] mb-0.5">Notice Board</div>
+              {noticeBoard.map((n, i) => <div key={i}>{n}</div>)}
             </div>
           )}
-          {noticeBoard && noticeBoard.map((n, i) => (
-            <div key={i} className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] text-sky-900">
-              {n}
+          {quoteOfWeek && (
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] text-indigo-900">
+              <div className="font-bold uppercase tracking-wide text-[10px] mb-0.5">Quote for the Week</div>
+              <div className="italic">&ldquo;{quoteOfWeek}&rdquo;</div>
             </div>
-          ))}
+          )}
           {talkToUs && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
               <span className="font-bold uppercase tracking-wide mr-1">Talk to Us</span>{talkToUs}
