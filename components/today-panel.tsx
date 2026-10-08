@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { NoticeCard, QuoteCard } from "@/components/info-popups";
 import { decidedText, decisionRemarks } from "@/lib/approval-display";
 import { fetchCurrentLocation, readSavedLocation, type FieldLocation } from "@/lib/location";
 
@@ -59,11 +60,7 @@ export function TodayPanel() {
   const [highPriorityOnly, setHighPriorityOnly] = useState(false);
   const [visitTab, setVisitTab] = useState<"all" | "pending" | "completed">("all");
   const [routeOptimized, setRouteOptimized] = useState(false);
-  // Item 12 (post-launch robustness round) -- real Flash News/Quote of the
-  // Week values, surfaced here for the first time (previously admin-only).
-  const [flashNews, setFlashNews] = useState<string | null>(null);
-  const [quoteOfWeek, setQuoteOfWeek] = useState<string | null>(null);
-  const [noticeBoard, setNoticeBoard] = useState<string[] | null>(null);
+  // Notice Board / Quote cards read the shared Information Upload feed (components/info-popups); Flash shows only as the ticker.
   const [talkToUs, setTalkToUs] = useState<string | null>(null);
 
   async function loadDashboard() {
@@ -74,16 +71,8 @@ export function TodayPanel() {
       setDashboard(response.data);
       try {
         const annRes = await apiClient.announcements();
-        setFlashNews(annRes.data.flashNews?.content?.trim() || null);
-        setQuoteOfWeek(annRes.data.quoteOfTheWeek?.quote?.trim() || null);
-        const nb = annRes.data.noticeBoard;
-        const notices = nb ? [nb.content1, nb.content2, nb.content3].map((s) => s?.trim()).filter((s): s is string => !!s) : [];
-        setNoticeBoard(notices.length ? notices : null);
         setTalkToUs(annRes.data.talkToUs?.content?.trim() || null);
       } catch {
-        setFlashNews(null);
-        setQuoteOfWeek(null);
-        setNoticeBoard(null);
         setTalkToUs(null);
       }
     } catch (dashboardError) {
@@ -157,11 +146,6 @@ export function TodayPanel() {
   useEffect(() => {
     const refresh = () => {
       apiClient.announcements().then((annRes) => {
-        setFlashNews(annRes.data.flashNews?.content?.trim() || null);
-        setQuoteOfWeek(annRes.data.quoteOfTheWeek?.quote?.trim() || null);
-        const nb = annRes.data.noticeBoard;
-        const notices = nb ? [nb.content1, nb.content2, nb.content3].map((x) => x?.trim()).filter((x): x is string => !!x) : [];
-        setNoticeBoard(notices.length ? notices : null);
         setTalkToUs(annRes.data.talkToUs?.content?.trim() || null);
       }).catch(() => undefined);
     };
@@ -238,27 +222,15 @@ export function TodayPanel() {
 
   return (
     <>
-      {(quoteOfWeek || noticeBoard || talkToUs) && (
-        <div className="space-y-1.5 mb-2">
-          {noticeBoard && (
-            <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] text-sky-900">
-              <div className="font-bold uppercase tracking-wide text-[10px] mb-0.5">Notice Board</div>
-              {noticeBoard.map((n, i) => <div key={i}>{n}</div>)}
-            </div>
-          )}
-          {quoteOfWeek && (
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] text-indigo-900">
-              <div className="font-bold uppercase tracking-wide text-[10px] mb-0.5">Quote for the Week</div>
-              <div className="italic">&ldquo;{quoteOfWeek}&rdquo;</div>
-            </div>
-          )}
-          {talkToUs && (
+      <div className="space-y-1.5 mb-2">
+        <NoticeCard />
+        <QuoteCard />
+        {talkToUs && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
               <span className="font-bold uppercase tracking-wide mr-1">Talk to Us</span>{talkToUs}
             </div>
           )}
         </div>
-      )}
       {/* Floating Toast Notification */}
       {(confirmMessage || error) && (
         <div className="fixed top-4 inset-x-4 max-w-sm mx-auto z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/95 text-white text-xs font-medium shadow-xl backdrop-blur-md border border-slate-800 animate-toast">
