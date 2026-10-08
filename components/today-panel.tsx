@@ -220,14 +220,8 @@ export function TodayPanel() {
 
   return (
     <>
-      {(flashNews || quoteOfWeek || noticeBoard || talkToUs) && (
+      {(quoteOfWeek || noticeBoard || talkToUs) && (
         <div className="space-y-1.5 mb-2">
-          {flashNews && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 flex items-center gap-1.5">
-              <span className="font-bold uppercase tracking-wide">Flash News</span>
-              <span className="truncate">{flashNews}</span>
-            </div>
-          )}
           {quoteOfWeek && (
             <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] italic text-indigo-900">
               &ldquo;{quoteOfWeek}&rdquo;
