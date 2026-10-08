@@ -1,5 +1,6 @@
 "use client";
 
+import { decidedText, historyLines } from "@/lib/approval-display";
 import type { CompanyBranch, TourPlan, TourPlanLocation } from "@zivira/types";
 import { Plus, Send, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -372,7 +373,7 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
               </div>
               <div className="flex items-center space-x-1.5">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border ${statusBadgeClass(tp.status)}`}>
-                  {tp.status}
+                  {decidedText(tp, tp.status)}
                 </span>
                 <button
                   type="button"
@@ -394,6 +395,11 @@ export function TourPlanForm({ switchToExpenses }: { switchToExpenses?: () => vo
                 Voided by {tp.voidedByName ?? tp.voidedBy} — {tp.voidReason}
                 {tp.reassignedToTpId ? ` · Reassigned to ${tp.reassignedToTpId}` : ""}
               </p>
+            )}
+            {historyLines(tp).length > 0 && (
+              <div className="text-[10px] text-slate-500 space-y-0.5">
+                {historyLines(tp).map((l, i) => <div key={i}>{l}</div>)}
+              </div>
             )}
             {tp.parentTpId && (
               <p className="text-[10px] text-amber-700 bg-amber-50 p-2 rounded-lg mt-2">

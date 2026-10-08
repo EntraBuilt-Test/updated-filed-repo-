@@ -9,6 +9,7 @@
 // Claims / Payroll (approve, reject, void, reassign — see
 // notifyFieldRepByCode() in the backend's manager.routes.ts).
 import { AlertTriangle, Bell, BellRing } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiClient, type FieldNotice } from "@/lib/api-client";
 import { PageHeader } from "@/components/page-components";
@@ -90,6 +91,7 @@ export default function NotificationsPage() {
                 {notice.priority === "URGENT" && <span className="badge badge-danger">Urgent</span>}
               </strong>
               <p className="muted">{notice.message}</p>
+              {notice.link && notice.link.startsWith("/field/") && <p style={{ fontSize: 12, marginTop: 4 }}><Link href={notice.link}>Open</Link></p>}
               <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>{timeAgo(notice.createdAt)}</p>
             </li>
           ))}

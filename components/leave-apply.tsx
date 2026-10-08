@@ -1,6 +1,7 @@
 
 "use client";
 
+import { decidedText, historyLines } from "@/lib/approval-display";
 import type { LeaveApplication, LeaveReason } from "@zivira/types";
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -114,7 +115,7 @@ export function LeaveApply() {
     <tr><td class="label">From</td><td>${formatDate(app.fromDate)}</td></tr>
     <tr><td class="label">To</td><td>${formatDate(app.toDate)}</td></tr>
     <tr><td class="label">Days</td><td>${app.days}</td></tr>
-    <tr><td class="label">Status</td><td><span class="status">${app.status}</span></td></tr>
+    <tr><td class="label">Status</td><td><span class="status">${decidedText(app, app.status)}</span></td></tr>
     <tr><td class="label">Approved By</td><td>${app.approvedByName || "Manager"}</td></tr>
   </table>
 </body>
@@ -344,11 +345,14 @@ export function LeaveApply() {
           const isApproved = app.status === 'APPROVED';
           const isPending = app.status === 'PENDING';
           const isRejected = app.status === 'REJECTED';
+          const isCancelled = app.status === 'CANCELLED';
+          const a: any = app;
 
           const colorTheme = isApproved 
             ? { border: 'border-emerald-200/90 hover:border-emerald-300', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600', badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-300', lightBg: 'bg-emerald-50/80 border-emerald-100', accent: 'text-emerald-700' }
             : isPending 
               ? { border: 'border-amber-200/90', iconBg: 'bg-amber-50', iconColor: 'text-amber-600', badgeBg: 'bg-amber-50 text-amber-800 border-amber-300', lightBg: 'bg-amber-50/40 border-amber-100', accent: 'text-amber-900' }
+              : isCancelled ? { border: 'border-slate-300', iconBg: 'bg-slate-100', iconColor: 'text-slate-600', badgeBg: 'bg-slate-100 text-slate-800 border-slate-300', lightBg: 'bg-slate-50 border-slate-200', accent: 'text-slate-700' }
               : { border: 'border-rose-200/90', iconBg: 'bg-rose-50', iconColor: 'text-rose-600', badgeBg: 'bg-rose-50 text-rose-800 border-rose-300', lightBg: 'bg-rose-50/80 border-rose-100', accent: 'text-rose-700' };
 
           return (
@@ -367,7 +371,7 @@ export function LeaveApply() {
                 <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider border uppercase ${colorTheme.badgeBg}`}>
                   {isApproved && <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
                   {isPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>}
-                  {app.status}
+                  {decidedText(app, app.status)}
                 </span>
               </div>
 
@@ -385,10 +389,13 @@ export function LeaveApply() {
                   <>
                     <span className="flex items-center gap-1">
                       <svg className="w-3.5 h-3.5 text-brand-700" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
-                      Approved by <strong className="text-slate-700 font-semibold">{app.approvedByName || 'Manager'}</strong>
+                      <strong className="text-slate-700 font-semibold">{a.approval?.approvedBy ? decidedText(app, 'Approved') : `Approved${a.approvedByName ? ' by ' + a.approvedByName : ''}`}</strong>
                     </span>
                     <button type="button" onClick={() => viewSlip(app)} className="text-brand-700 font-bold hover:underline">View Slip</button>
                   </>
+                )}
+                {isCancelled && (
+                  <span className="text-slate-600 font-medium">{a.cancelReason ? `Reason: ${a.cancelReason}` : 'Leave cancelled after approval'}</span>
                 )}
                 {isPending && (
                   <>

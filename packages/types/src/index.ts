@@ -158,7 +158,13 @@ export type LeaveApplication = {
   days: number;
   reason?: string | null;
   isLWP: boolean;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+  // Round 59 -- approval / cancellation trail (absent on older records)
+  approval?: { status: "Approved" | "Rejected"; approvedBy: { id: string; name: string; role: "ADMIN" | "MANAGER" }; approvedAt: string; remarks?: string };
+  approvalHistory?: { action: string; byId: string; byName: string; byRole: string; at: string; remarks?: string }[];
+  cancelledBy?: { id: string; name: string; role: "ADMIN" | "MANAGER" };
+  cancelledAt?: string;
+  cancelReason?: string;
   approvedBy?: string | null;
   approvedByName?: string;
   approvedAt?: string | null;

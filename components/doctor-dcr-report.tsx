@@ -20,6 +20,7 @@
 // switching back into this tab) after submitting a new DCR immediately
 // reflects the new visit in both counts and the table — no separate
 // "refresh after submit" wiring needed.
+import { decidedText, historyLines } from "@/lib/approval-display";
 import type { DcrExtended, Doctor, VisitSummaryRow } from "@zivira/types";
 import { RefreshCw, Stethoscope, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -178,6 +179,7 @@ export function DoctorDcrReport() {
                           </td>
                           <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>
                             <StatusBadge status={visit.status} />
+                            {decidedText(visit, "") ? <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{decidedText(visit, "")}</div> : null}
                           </td>
                           <td style={{ padding: "8px", borderBottom: "1px solid var(--line)", wordBreak: "break-word" }}>
                             {visit.productsDetailed?.length ? visit.productsDetailed.join(", ") : <span className="muted">—</span>}

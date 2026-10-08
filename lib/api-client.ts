@@ -23,6 +23,8 @@ function detectSubmissionChannel(): "Desktop" | "Mobile" | "Others" {
 
 export type FieldNotice = {
   id: string;
+  type?: string;
+  link?: string;
   title: string;
   message: string;
   audience: "ALL" | "MR" | "MANAGER" | "ADMIN";
