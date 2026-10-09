@@ -20,7 +20,7 @@
 // switching back into this tab) after submitting a new DCR immediately
 // reflects the new visit in both counts and the table — no separate
 // "refresh after submit" wiring needed.
-import { decidedText, decisionRemarks, historyLines } from "@/lib/approval-display";
+import { decidedText, decisionRemarks } from "@/lib/approval-display";
 import type { DcrExtended, Doctor, VisitSummaryRow } from "@zivira/types";
 import { RefreshCw, Stethoscope, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";

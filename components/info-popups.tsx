@@ -15,7 +15,7 @@ export type InfoFeed = { flash: InfoItem[]; notices: InfoItem[]; quote: InfoItem
 
 const CSS = `
 .zvi-ticker{display:flex;align-items:center;gap:12px;overflow:hidden;background:linear-gradient(90deg,#7c2d12,#c2410c);color:#fff;border-radius:10px;padding:6px 12px;font-size:13px}
-.zvi-ticker-tag{flex:none;font-weight:700;letter-spacing:.06em;font-size:11px;background:rgba(255,255,255,.2);border-radius:6px;padding:2px 8px}
+.zvi-ticker-tag{flex:none;white-space:nowrap;font-weight:700;letter-spacing:.06em;font-size:11px;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 12px;min-width:max-content}
 .zvi-ticker-viewport{overflow:hidden;flex:1;white-space:nowrap;mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
 .zvi-ticker-track{display:inline-flex;gap:56px;padding-left:100%;animation:zvi-scroll var(--zvi-dur,30s) linear infinite}
 .zvi-ticker:hover .zvi-ticker-track{animation-play-state:paused}
@@ -142,7 +142,7 @@ export function FlashTicker({ items }: { items: InfoItem[] }) {
   return (
     <div className="zvi-ticker" role="marquee" aria-label="Flash news">
       <Styles />
-      <span className="zvi-ticker-tag">FLASH</span>
+      <span className="zvi-ticker-tag">FLASH UPDATE</span>
       <div className="zvi-ticker-viewport">
         {/* every item once: the track starts off-screen to the right and runs left, so the same message is never visible twice */}
         <div className="zvi-ticker-track" style={{ ["--zvi-dur" as string]: `${dur}s` }}>

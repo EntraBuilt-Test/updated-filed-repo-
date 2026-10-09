@@ -1,7 +1,7 @@
 
 "use client";
 
-import { decidedText, decisionRemarks, historyLines } from "@/lib/approval-display";
+import { decidedText, decisionRemarks } from "@/lib/approval-display";
 import type { LeaveApplication, LeaveReason } from "@zivira/types";
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -346,7 +346,7 @@ export function LeaveApply() {
           const isPending = app.status === 'PENDING';
           const isRejected = app.status === 'REJECTED';
           const isCancelled = app.status === 'CANCELLED';
-          const a: any = app;
+          const a = app;
 
           const colorTheme = isApproved 
             ? { border: 'border-emerald-200/90 hover:border-emerald-300', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600', badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-300', lightBg: 'bg-emerald-50/80 border-emerald-100', accent: 'text-emerald-700' }
