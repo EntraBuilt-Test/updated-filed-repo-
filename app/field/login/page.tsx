@@ -20,7 +20,6 @@ export default function LoginPage() {
         <div className="login-card">
           <ShieldCheck size={34} color="var(--brand)" />
           <h2>Sign in</h2>
-          <p className="muted">Seed user: mr-001</p>
           <LoginForm />
         </div>
       </section>
