@@ -73,7 +73,7 @@ export default function ProfilePage() {
                 </svg>
               </span>
             </div>
-            <p className="text-xs font-medium text-slate-600 mt-0.5">Senior Medical Representative (KOL Specialist)</p>
+            <p className="text-xs font-medium text-slate-600 mt-0.5">{(profile as { designation?: string } | null | undefined)?.designation || "Field Force"}</p>
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800">
                 MR • {profile?.role || "FIELD_FORCE"}
@@ -129,49 +129,6 @@ export default function ProfilePage() {
 
       <PayrollStatusCard />
 
-      <section className="bg-white rounded-2xl p-4 shadow-card border border-slate-200/80">
-        <div className="flex items-center justify-between mb-2.5">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-            September Field Metrics
-          </h3>
-          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            Rank #2 in South
-          </span>
-        </div>
-        <div className="space-y-1.5 mb-3">
-          <div className="flex justify-between text-xs font-semibold">
-            <span className="text-slate-600">Doctor Call Coverage</span>
-            <span className="text-slate-900 font-mono">112 / 120 (93.3%)</span>
-          </div>
-          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200">
-            <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-600 rounded-full w-[93.3%]"></div>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-            <div>
-              <span className="text-slate-500 text-[10px] font-medium block">Daily Allowance</span>
-              <span className="font-bold text-emerald-700">Eligible (Full Day)</span>
-            </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-            <div>
-              <span className="text-slate-500 text-[10px] font-medium block">Geofence Compliance</span>
-              <span className="font-bold text-slate-800">100% In-Bounds</span>
-            </div>
-            <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path clipRule="evenodd" fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
-          </div>
-        </div>
-        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
-          <span className="flex items-center gap-1">
-            <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-            Device: Knox Secured (Enterprise)
-          </span>
-          <span className="font-mono">v2.4.1 (Build 491)</span>
-        </div>
-      </section>
     </div>
   );
 }

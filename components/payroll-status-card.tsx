@@ -14,8 +14,6 @@ export function PayrollStatusCard() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [amountVisible, setAmountVisible] = useState(true);
-  const [showHistory, setShowHistory] = useState(false);
 
   async function load() {
     setLoading(true); setError("");
@@ -141,28 +139,10 @@ export function PayrollStatusCard() {
                   {record.status === 'RELEASED' && <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path clipRule="evenodd" fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>}
                   {meta?.label}
                 </span>
-                <span className="text-xs font-semibold text-emerald-900">{record.status === 'RELEASED' ? 'Direct Deposit Completed' : 'Pending Action'}</span>
+                <span className="text-xs font-semibold text-emerald-900">{record.status === 'RELEASED' ? 'Payroll released' : 'Pending action'}</span>
               </div>
             </div>
             
-            <div className="mt-2.5 pt-2 border-t border-emerald-200/50 flex items-baseline justify-between">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-emerald-800 font-semibold">Net Disbursed Compensation</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-black text-slate-900 tracking-tight font-mono">{amountVisible ? '₹68,450.00' : '₹ ••••••••'}</span>
-                  <button onClick={() => setAmountVisible(!amountVisible)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <span className="text-[10px] font-semibold text-emerald-800 bg-white/80 border border-emerald-300/60 px-2 py-0.5 rounded-md">
-                100% On-Time
-              </span>
-            </div>
-
             {record.status !== "RELEASED" && record.holdReason && (
               <div className="mt-2 text-[11px] text-red-600 bg-red-50 rounded-md p-1.5 border border-red-100 font-medium">
                 Hold Reason: {record.holdReason}
@@ -197,64 +177,19 @@ export function PayrollStatusCard() {
                   <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path clipRule="evenodd" fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" /></svg>
                   Approved by {record.managerApprovedByName}
                 </span>
-                <span className="text-slate-400 font-mono text-[10px]">A/C •••• 4108</span>
               </div>
             )}
           </div>
         </>
       )}
 
-      <div className="grid grid-cols-3 gap-2 text-center my-3">
-        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-          <p className="text-[10px] text-slate-500 font-medium">Base Salary</p>
-          <p className="font-bold text-xs text-slate-900 mt-0.5 font-mono">₹45,000</p>
-        </div>
-        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-          <p className="text-[10px] text-slate-500 font-medium">TA / DA Fuel</p>
-          <p className="font-bold text-xs text-emerald-700 mt-0.5 font-mono">₹14,250</p>
-        </div>
-        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-          <p className="text-[10px] text-slate-500 font-medium">Target Incentive</p>
-          <p className="font-bold text-xs text-teal-700 mt-0.5 font-mono">₹9,200</p>
-        </div>
-      </div>
-
       <div className="flex items-center gap-2 pt-1">
         <button onClick={downloadPayslip} disabled={!record} className="flex-1 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 text-emerald-800 border border-emerald-300/80 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
           <svg className="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-          <span>Download Payslip</span>
-        </button>
-        <button onClick={() => setShowHistory(!showHistory)} className="py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all">
-          <span>Past Slips</span>
-          <svg className={`w-3.5 h-3.5 text-slate-500 transform transition-transform ${showHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+          <span>Download Payroll Status</span>
         </button>
       </div>
 
-      {showHistory && (
-        <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Previous Cycles</p>
-          <div className="flex items-center justify-between text-xs py-1.5 px-2 bg-slate-50 rounded-lg">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-              <span className="font-medium text-slate-800">August 2026</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-slate-700 font-semibold">₹66,100</span>
-              <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1 rounded">Paid</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between text-xs py-1.5 px-2 bg-slate-50 rounded-lg">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-              <span className="font-medium text-slate-800">July 2026</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-slate-700 font-semibold">₹64,800</span>
-              <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1 rounded">Paid</span>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
