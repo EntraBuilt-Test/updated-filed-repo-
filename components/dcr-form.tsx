@@ -230,7 +230,6 @@ export function DcrForm() {
   // QA-08 (Nov 2026): capture GPS as soon as the form opens.
   useEffect(() => {
     captureGps();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // QA-09 (Nov 2026): real distance from the rep to the selected doctor's

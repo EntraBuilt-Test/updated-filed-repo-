@@ -250,7 +250,7 @@ export function TodayPanel() {
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-[11px]">
             <div className="flex items-center gap-1.5 text-emerald-800 font-bold tracking-wider uppercase text-[10px]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              <span>{dashboard?.profile.employeeCode ?? "—"} • Today's Briefing</span>
+              <span>{dashboard?.profile.employeeCode ?? "—"} • Today&apos;s Briefing</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 font-medium text-[10px]">
               <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700 font-semibold">{dashboard?.profile.division ?? "—"}</span>
