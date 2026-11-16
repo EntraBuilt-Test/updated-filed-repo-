@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fieldNav } from "@/lib/nav";
-import { apiClient, clearToken } from "@/lib/api-client";
+import { apiClient, clearToken, getToken } from "@/lib/api-client";
 import { fetchCurrentLocation, readSavedLocation, type FieldLocation } from "@/lib/location";
 import { InfoAnnouncements } from "@/components/info-popups";
 import { CheckoutGuard } from "@/components/checkout-guard";
@@ -26,6 +26,31 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useState<FieldLocation | null>(null);
   const [locating, setLocating] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const isPublicPath = pathname === "/field/login" || pathname === "/field/auto-login";
+  const [authOk, setAuthOk] = useState(false);
+
+  // QA-10 (Nov 2026): screens used to render (with demo values and a
+  // "Missing bearer token" banner) for a signed-out visitor. Send anyone
+  // without a valid, unexpired session to the login screen instead.
+  useEffect(() => {
+    if (isPublicPath) { setAuthOk(true); return; }
+    const token = getToken();
+    let valid = false;
+    if (token) {
+      try {
+        const part = token.split(".")[1] ?? "";
+        const payload = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/"))) as { exp?: number };
+        valid = !payload.exp || payload.exp * 1000 > Date.now();
+      } catch { valid = false; }
+    }
+    if (!valid) {
+      clearToken();
+      setAuthOk(false);
+      router.replace("/field/login");
+      return;
+    }
+    setAuthOk(true);
+  }, [pathname, isPublicPath, router]);
 
   function signOut() {
     clearToken();
@@ -58,8 +83,11 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  if (pathname === "/field/login") {
+  if (isPublicPath) {
     return <>{children}</>;
+  }
+  if (!authOk) {
+    return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Checking your session…</div>;
   }
 
   return (

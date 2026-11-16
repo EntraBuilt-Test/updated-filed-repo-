@@ -240,7 +240,7 @@ export type JointWork = {
   managerObservations?: string;
 };
 
-export type GpsLocation = { latitude?: number; longitude?: number; label?: string };
+export type GpsLocation = { latitude?: number; longitude?: number; label?: string; accuracyMeters?: number; distanceMeters?: number | null; geofenceStatus?: "WITHIN" | "OUTSIDE" | "NO_DOCTOR_TAG" | null };
 
 // Extended DCR (replaces old Dcr)
 export type DcrExtended = Dcr & {

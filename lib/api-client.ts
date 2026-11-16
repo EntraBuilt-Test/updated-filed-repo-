@@ -451,6 +451,12 @@ async function request<T>(path: string, init: RequestInit = {}) {
     ...init,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers }
   });
+  if (response.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/field/login")) {
+    // QA-10: expired / missing session -> back to login instead of showing errors.
+    clearToken();
+    window.location.replace("/field/login");
+    throw new ApiError("Your session has expired. Please sign in again.");
+  }
   const payload = await readJson(response);
   if (!response.ok) throw new ApiError(payload?.error?.message ?? "API request failed", payload?.error?.details);
   return payload as ApiEnvelope<T>;

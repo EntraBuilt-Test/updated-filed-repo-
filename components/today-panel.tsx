@@ -250,22 +250,22 @@ export function TodayPanel() {
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-[11px]">
             <div className="flex items-center gap-1.5 text-emerald-800 font-bold tracking-wider uppercase text-[10px]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              <span>Shift #{dashboard?.profile.employeeCode ?? "042"} • Live Briefing</span>
+              <span>{dashboard?.profile.employeeCode ?? "—"} • Today's Briefing</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 font-medium text-[10px]">
-              <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700 font-semibold">{dashboard?.profile.division ?? "Division"}</span>
+              <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700 font-semibold">{dashboard?.profile.division ?? "—"}</span>
             </div>
           </div>
           <div className="pt-3 flex items-start justify-between gap-2">
             <div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">Good morning, {dashboard?.profile.name?.split(' ')[0] ?? "Rahul"}</h2>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">{(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })()}{dashboard?.profile.name ? `, ${dashboard.profile.name.split(" ")[0]}` : ""}</h2>
               <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
-                {dashboard?.today.plannedVisits ?? 0} doctors queued today • Est. 14.2 km route coverage
+                {dashboard?.today.plannedVisits ?? 0} doctors assigned • {dashboard?.today.completedDcrs ?? 0} calls logged today
               </p>
             </div>
             <div className="text-right shrink-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Efficiency</span>
-              <span className="text-base font-black text-emerald-800 leading-none">94%</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Today</span>
+              <span className="text-base font-black text-emerald-800 leading-none">{dashboard?.today.completedDcrs ?? 0} calls</span>
             </div>
           </div>
           <div className="flex items-center space-x-2 pt-3.5">
@@ -324,7 +324,6 @@ export function TodayPanel() {
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                 <span className="text-[11px] font-semibold text-slate-500">Field Geolocation</span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">Next: 1.8 km</span>
               </div>
               <p className="text-xs font-bold text-slate-900 leading-snug truncate">
                 {location?.label ?? "Required before check-in"}
@@ -407,14 +406,12 @@ export function TodayPanel() {
         <article className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-pointer active:scale-[0.98] group relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Territory</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80">Zone 3</span>
           </div>
           <div className="my-2">
-            <span className="text-lg font-black text-slate-900 leading-snug tracking-tight block truncate">{dashboard?.profile.territory ?? "Chennai HQ"}</span>
+            <span className="text-lg font-black text-slate-900 leading-snug tracking-tight block truncate">{dashboard?.profile.territory ?? "—"}</span>
           </div>
           <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span className="truncate">{dashboard?.profile.division ?? "Zivira East"}</span>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50/80 px-1.5 py-0.5 rounded">14.2 km</span>
+            <span className="truncate">{dashboard?.profile.division ?? "—"}</span>
           </div>
         </article>
       </section>
@@ -449,9 +446,9 @@ export function TodayPanel() {
             ))}
           </div>
           <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-0.5 pt-1.5">
-            <span>Start: Lilavati</span>
-            <span className="text-center text-slate-500 font-semibold">{dashboard?.today.plannedVisits ?? 0} visits remaining</span>
-            <span>End: Kolkata Care</span>
+            <span className="truncate max-w-[30%]">{visibleDoctors[0] ? `Start: ${visibleDoctors[0].name}` : ""}</span>
+            <span className="text-center text-slate-500 font-semibold">{Math.max((dashboard?.today.plannedVisits ?? 0) - (dashboard?.today.completedDcrs ?? 0), 0)} visits remaining</span>
+            <span className="truncate max-w-[30%] text-right">{visibleDoctors.length > 1 ? `End: ${visibleDoctors[Math.min(visibleDoctors.length, 5) - 1].name}` : ""}</span>
           </div>
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
@@ -460,7 +457,7 @@ export function TodayPanel() {
               <circle cx="12" cy="12" r="9" strokeWidth="1.8"></circle>
               <path d="M12 7v5l3 3" strokeWidth="1.8"></path>
             </svg>
-            <span>Est. Route Time: <strong className="text-slate-800 font-semibold">4h 30m</strong></span>
+            <span>Calls logged today: <strong className="text-slate-800 font-semibold">{dashboard?.today.completedDcrs ?? 0}</strong></span>
           </div>
           <div className="flex items-center gap-1 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
             <svg className="w-3 h-3 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -71,7 +71,7 @@ export function DcrForm() {
   const [checkOutTime, setCheckOutTime]     = useState("");
   const [hospitalClinic, setHospitalClinic] = useState("");
   const [gpsLabel, setGpsLabel]             = useState("");
-  const [gpsCoords, setGpsCoords]           = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsCoords, setGpsCoords]           = useState<{ latitude: number; longitude: number; accuracyMeters?: number } | null>(null);
   const [gpsStatus, setGpsStatus]           = useState("");
   // Product Promotion
   const [promoMaterials, setPromoMaterials] = useState<string[]>([]);
@@ -212,20 +212,45 @@ export function DcrForm() {
   // INSIDE the "Location label (optional)" box itself, not as separate text
   // below it, so this writes straight into gpsLabel (still editable by the
   // MR afterwards — it's a plain controlled input).
-  function useCurrentLocation() {
+  function captureGps() {
     if (!navigator.geolocation) { setGpsStatus("Geolocation not available on this device."); return; }
     setGpsStatus("Fetching location…");
     navigator.geolocation.getCurrentPosition(
       pos => {
-        const { latitude, longitude } = pos.coords;
-        setGpsCoords({ latitude, longitude });
+        const { latitude, longitude, accuracy } = pos.coords;
+        setGpsCoords({ latitude, longitude, accuracyMeters: Math.round(accuracy) });
         setGpsLabel(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-        setGpsStatus("Location captured.");
+        setGpsStatus("");
       },
-      () => setGpsStatus("Unable to fetch location — enter manually or skip."),
-      { enableHighAccuracy: true, timeout: 8000 }
+      () => setGpsStatus("Location is blocked or unavailable. Allow location access and tap Refresh — a DCR cannot be submitted without GPS."),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
   }
+
+  // QA-08 (Nov 2026): capture GPS as soon as the form opens.
+  useEffect(() => {
+    captureGps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // QA-09 (Nov 2026): real distance from the rep to the selected doctor's
+  // geo-tag (nearest tag). The server repeats this check when saving.
+  const geofence = useMemo(() => {
+    if (!gpsCoords) return null;
+    const doc = doctors.find(d => d.id === doctorId) as unknown as { geoTags?: Array<{ lat?: number; lng?: number }> } | undefined;
+    const tags = (doc?.geoTags ?? []).filter(t => typeof t.lat === "number" && typeof t.lng === "number");
+    if (tags.length === 0) return { status: "NO_DOCTOR_TAG" as const, distance: null as number | null };
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    let best = Infinity;
+    for (const t of tags) {
+      const dLat = toRad((t.lat as number) - gpsCoords.latitude);
+      const dLng = toRad((t.lng as number) - gpsCoords.longitude);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(gpsCoords.latitude)) * Math.cos(toRad(t.lat as number)) * Math.sin(dLng / 2) ** 2;
+      best = Math.min(best, 2 * 6371000 * Math.asin(Math.sqrt(a)));
+    }
+    const distance = Math.round(best);
+    return { status: distance <= 500 ? ("WITHIN" as const) : ("OUTSIDE" as const), distance };
+  }, [gpsCoords, doctors, doctorId]);
 
   function toggleMaterial(name: string) {
     setPromoMaterials(m => m.includes(name) ? m.filter(x => x !== name) : [...m, name]);
@@ -265,6 +290,11 @@ export function DcrForm() {
   async function doSubmit(overrideOverVisitWarning: boolean) {
     setError(""); setMessage("");
     if (dateLocked) { setError("This DCR date is locked. Request a release first."); return; }
+    if (!gpsCoords) {
+      setError("GPS location is required. Allow location access and tap Refresh, then submit again.");
+      captureGps();
+      return;
+    }
     let pob, rxItems, pobAmountRs;
     try {
       pob = cleanPobRows(pobRows); rxItems = cleanRxRows(rxRows); pobAmountRs = cleanAmount(pobAmount);
@@ -292,7 +322,7 @@ export function DcrForm() {
         brandRatings: brandsOfProducts(productsDetailed, products).filter((b) => brandRatings[b] > 0).map((b) => ({ brandName: b, stars: brandRatings[b] })),
         checkInTime: checkInTime || undefined,
         checkOutTime: checkOutTime || undefined,
-        gpsLocation: (gpsCoords || gpsLabel) ? { ...(gpsCoords ?? {}), label: gpsLabel || undefined } : undefined,
+        gpsLocation: { ...gpsCoords, label: gpsLabel || undefined },
         hospitalClinic: hospitalClinic || undefined,
         visitDurationMinutes,
         promotionalMaterialsShared: promoMaterials.length ? promoMaterials : undefined,
@@ -537,7 +567,7 @@ export function DcrForm() {
             {gpsCoords && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1 animate-ping"></span>
-                Verified
+                GPS captured
               </span>
             )}
           </div>
@@ -566,19 +596,23 @@ export function DcrForm() {
               <div className="relative">
                 <input 
                   type="text"
-                  placeholder="Location label (optional)"
+                  placeholder="GPS location (required)"
                   value={gpsLabel} 
                   onChange={e => setGpsLabel(e.target.value)}
                   className="w-full text-[11px] font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0" 
                 />
                 <p className={`text-[10px] ${gpsCoords ? 'text-emerald-700' : 'text-slate-500'} font-semibold mt-0.5`}>
-                  {gpsStatus || (gpsCoords ? '● GPS Match (Within GeoFence)' : 'Tap Refresh to capture GPS')}
+                  {gpsStatus
+                    || (!gpsCoords ? "Capturing GPS… tap Refresh if it does not appear"
+                    : geofence?.status === "WITHIN" ? `● Within geofence · ${geofence.distance} m from doctor`
+                    : geofence?.status === "OUTSIDE" ? `▲ Outside geofence · ${geofence.distance} m from doctor's tagged location`
+                    : `● Location captured${gpsCoords.accuracyMeters ? ` (±${gpsCoords.accuracyMeters} m)` : ""} · doctor not geo-tagged yet`)}
                 </p>
               </div>
             </div>
             <button 
               type="button" 
-              onClick={useCurrentLocation}
+              onClick={captureGps}
               className="text-[11px] font-bold text-slate-600 hover:text-slate-900 px-2 py-1 rounded bg-white border border-slate-200 shadow-xs active:bg-slate-50"
             >
               Refresh
