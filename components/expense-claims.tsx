@@ -267,6 +267,9 @@ export function ExpenseClaims() {
                   <span className={`inline-block mt-1 px-1.5 py-[1px] rounded text-[9px] font-bold uppercase tracking-wider border ${statusBadgeClass(c.status)}`}>
                     {c.status}
                   </span>
+                  {(c as unknown as { decisionLabel?: string }).decisionLabel && (
+                    <p className="text-[9px] text-slate-500 mt-0.5">{(c as unknown as { decisionLabel?: string }).decisionLabel}</p>
+                  )}
                 </div>
               </div>
               {c.status === "REJECTED" && c.rejectReason && (

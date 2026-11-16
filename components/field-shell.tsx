@@ -122,10 +122,6 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <div className="flex items-center space-x-1.5">
-            <button onClick={refreshLocation} className="flex items-center space-x-1.5 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-800 transition-all duration-300 shadow-xs select-none cursor-pointer">
-              <span className={`w-2 h-2 rounded-full ${locating ? 'bg-amber-500 animate-pulse' : 'bg-emerald-600 pulse-dot'}`}></span>
-              <span>{locating ? "Locating..." : (location ? "GPS Active" : "Location req.")}</span>
-            </button>
             <Link
               href="/field/notifications"
               className="relative inline-flex items-center justify-center w-8 h-8 text-slate-600 hover:text-emerald-700 border border-slate-200 rounded-lg bg-white shadow-xs hover:bg-slate-50 active:scale-90 transition-all duration-150 ease-out cursor-pointer"

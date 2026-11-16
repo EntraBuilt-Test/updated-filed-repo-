@@ -1,7 +1,6 @@
 "use client";
 
 import type { Attendance, Dcr, FieldDashboard } from "@zivira/types";
-import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
@@ -124,19 +123,6 @@ export function TodayPanel() {
       await loadDashboard();
     } catch (checkOutError) {
       setError(checkOutError instanceof Error ? checkOutError.message : "Unable to check out");
-    } finally {
-      setLocating(false);
-    }
-  }
-
-  async function enableGps() {
-    setError("");
-    setLocating(true);
-    try {
-      const currentLocation = await fetchCurrentLocation();
-      setLocation(currentLocation);
-    } catch (gpsError) {
-      setError(gpsError instanceof Error ? gpsError.message : "Unable to fetch GPS location");
     } finally {
       setLocating(false);
     }
@@ -290,14 +276,6 @@ export function TodayPanel() {
               </button>
             )}
             <button
-              className="flex-1 inline-flex items-center justify-center space-x-1.5 py-2.5 px-3 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl shadow-xs hover:bg-slate-50 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-70"
-              onClick={loadDashboard}
-              disabled={loading}
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              <span>Sync</span>
-            </button>
-            <button
               aria-label="Log a DCR"
               title="Log a DCR"
               onClick={() => router.push("/field/dcr")}
@@ -308,38 +286,6 @@ export function TodayPanel() {
               </svg>
             </button>
           </div>
-        </div>
-      </section>
-
-      {/* GPS Location Requirement Card */}
-      <section className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs hover:shadow-md transition-all duration-200 relative overflow-hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shrink-0 shadow-xs">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                <span className="text-[11px] font-semibold text-slate-500">Field Geolocation</span>
-              </div>
-              <p className="text-xs font-bold text-slate-900 leading-snug truncate">
-                {location?.label ?? "Required before check-in"}
-              </p>
-              <p className="text-[11px] text-slate-500 leading-normal line-clamp-1">
-                {location ? `Accuracy ${Math.round(location.accuracy)}m · ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}` : "Allow satellite GPS to log territory presence."}
-              </p>
-            </div>
-          </div>
-          <button
-            className="shrink-0 px-3 py-2 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300/80 rounded-xl active:scale-95 transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-70"
-            onClick={enableGps}
-            disabled={locating}
-          >
-            <span>{locating ? "Locating…" : "Enable GPS"}</span>
-          </button>
         </div>
       </section>
 

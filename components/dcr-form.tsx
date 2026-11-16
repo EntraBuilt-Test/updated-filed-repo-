@@ -72,7 +72,7 @@ export function DcrForm() {
   const [hospitalClinic, setHospitalClinic] = useState("");
   const [gpsLabel, setGpsLabel]             = useState("");
   const [gpsCoords, setGpsCoords]           = useState<{ latitude: number; longitude: number; accuracyMeters?: number } | null>(null);
-  const [gpsStatus, setGpsStatus]           = useState("");
+  const [, setGpsStatus]                    = useState("");
   // Product Promotion
   const [promoMaterials, setPromoMaterials] = useState<string[]>([]);
   const [visualAidUsed, setVisualAidUsed]   = useState(false);
@@ -222,7 +222,7 @@ export function DcrForm() {
         setGpsLabel(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         setGpsStatus("");
       },
-      () => setGpsStatus("Location is blocked or unavailable. Allow location access and tap Refresh — a DCR cannot be submitted without GPS."),
+      () => setGpsStatus("blocked"),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
   }
@@ -232,24 +232,6 @@ export function DcrForm() {
     captureGps();
   }, []);
 
-  // QA-09 (Nov 2026): real distance from the rep to the selected doctor's
-  // geo-tag (nearest tag). The server repeats this check when saving.
-  const geofence = useMemo(() => {
-    if (!gpsCoords) return null;
-    const doc = doctors.find(d => d.id === doctorId) as unknown as { geoTags?: Array<{ lat?: number; lng?: number }> } | undefined;
-    const tags = (doc?.geoTags ?? []).filter(t => typeof t.lat === "number" && typeof t.lng === "number");
-    if (tags.length === 0) return { status: "NO_DOCTOR_TAG" as const, distance: null as number | null };
-    const toRad = (v: number) => (v * Math.PI) / 180;
-    let best = Infinity;
-    for (const t of tags) {
-      const dLat = toRad((t.lat as number) - gpsCoords.latitude);
-      const dLng = toRad((t.lng as number) - gpsCoords.longitude);
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(gpsCoords.latitude)) * Math.cos(toRad(t.lat as number)) * Math.sin(dLng / 2) ** 2;
-      best = Math.min(best, 2 * 6371000 * Math.asin(Math.sqrt(a)));
-    }
-    const distance = Math.round(best);
-    return { status: distance <= 500 ? ("WITHIN" as const) : ("OUTSIDE" as const), distance };
-  }, [gpsCoords, doctors, doctorId]);
 
   function toggleMaterial(name: string) {
     setPromoMaterials(m => m.includes(name) ? m.filter(x => x !== name) : [...m, name]);
@@ -290,7 +272,7 @@ export function DcrForm() {
     setError(""); setMessage("");
     if (dateLocked) { setError("This DCR date is locked. Request a release first."); return; }
     if (!gpsCoords) {
-      setError("GPS location is required. Allow location access and tap Refresh, then submit again.");
+      setError("Location is needed to submit a DCR. Turn on location for this app/browser, then tap Submit again.");
       captureGps();
       return;
     }
@@ -561,14 +543,8 @@ export function DcrForm() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <div className="flex items-center space-x-2">
               <span className="w-6 h-6 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center font-bold text-xs">2</span>
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Location & Verification</h3>
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Visit Details</h3>
             </div>
-            {gpsCoords && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1 animate-ping"></span>
-                GPS captured
-              </span>
-            )}
           </div>
           
           <div>
@@ -587,36 +563,6 @@ export function DcrForm() {
             </div>
           </div>
           
-          <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200/70 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={`w-7 h-7 rounded-lg ${gpsCoords ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'} flex items-center justify-center flex-shrink-0`}>
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"></path></svg>
-              </div>
-              <div className="relative">
-                <input 
-                  type="text"
-                  placeholder="GPS location (required)"
-                  value={gpsLabel} 
-                  onChange={e => setGpsLabel(e.target.value)}
-                  className="w-full text-[11px] font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0" 
-                />
-                <p className={`text-[10px] ${gpsCoords ? 'text-emerald-700' : 'text-slate-500'} font-semibold mt-0.5`}>
-                  {gpsStatus
-                    || (!gpsCoords ? "Capturing GPS… tap Refresh if it does not appear"
-                    : geofence?.status === "WITHIN" ? `● Within geofence · ${geofence.distance} m from doctor`
-                    : geofence?.status === "OUTSIDE" ? `▲ Outside geofence · ${geofence.distance} m from doctor's tagged location`
-                    : `● Location captured${gpsCoords.accuracyMeters ? ` (±${gpsCoords.accuracyMeters} m)` : ""} · doctor not geo-tagged yet`)}
-                </p>
-              </div>
-            </div>
-            <button 
-              type="button" 
-              onClick={captureGps}
-              className="text-[11px] font-bold text-slate-600 hover:text-slate-900 px-2 py-1 rounded bg-white border border-slate-200 shadow-xs active:bg-slate-50"
-            >
-              Refresh
-            </button>
-          </div>
           
           <DcrDateField date={dcrDate} setDate={setDcrDate} onLockedChange={setDateLocked} />
 
